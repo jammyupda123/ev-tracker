@@ -2,7 +2,12 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5" />
+  <meta name="theme-color" content="#0F172A" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="EV 트래커" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <title>EV 충전기 트래커</title>
 
   <!-- Pretendard 한글 폰트 -->
@@ -41,18 +46,49 @@
 <body>
   <div id="root"></div>
 
+  <!-- PWA: manifest + apple-touch-icon 동적 생성 (단일 HTML 유지) -->
+  <script>
+    (function () {
+      var iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#0F172A"/><text x="96" y="138" font-size="110" text-anchor="middle" fill="#F59E0B" font-family="sans-serif">⚡</text></svg>';
+      var iconUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(iconSvg);
+      var manifest = {
+        name: "EV 충전기 트래커",
+        short_name: "EV 트래커",
+        start_url: "./",
+        scope: "./",
+        display: "standalone",
+        background_color: "#FAFAF9",
+        theme_color: "#0F172A",
+        icons: [{ src: iconUrl, sizes: "192x192", type: "image/svg+xml", purpose: "any maskable" }]
+      };
+      var mLink = document.createElement('link');
+      mLink.rel = 'manifest';
+      mLink.href = 'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(manifest));
+      document.head.appendChild(mLink);
+      var tLink = document.createElement('link');
+      tLink.rel = 'apple-touch-icon';
+      tLink.href = iconUrl;
+      document.head.appendChild(tLink);
+      var fLink = document.createElement('link');
+      fLink.rel = 'icon';
+      fLink.type = 'image/svg+xml';
+      fLink.href = iconUrl;
+      document.head.appendChild(fLink);
+    })();
+  </script>
+
   <script type="text/babel" data-type="module" data-presets="env,react">
     // ====================================================================
     // 🔥 Firebase 설정 — 본인 값으로 수정하세요
     // Firebase 콘솔 → 프로젝트 설정 → 일반 → 내 앱 → SDK 설정 및 구성에서 복사
     // ====================================================================
     const firebaseConfig = {
-      apiKey: "AIzaSyCn74ILvzpGcVsJKxGPi1-tNWX54Dj2MJY",
-      authDomain: "ev-tracker-a29b3.firebaseapp.com",
-      projectId: "ev-tracker-a29b3",
-      storageBucket: "ev-tracker-a29b3.firebasestorage.app",
-      messagingSenderId: "62785593665",
-      appId: "1:62785593665:web:23f6d13c8231011a2441c0",
+      apiKey: "여기에_apiKey_붙여넣기",
+      authDomain: "여기에_authDomain_붙여넣기",
+      projectId: "여기에_projectId_붙여넣기",
+      storageBucket: "여기에_storageBucket_붙여넣기",
+      messagingSenderId: "여기에_messagingSenderId_붙여넣기",
+      appId: "여기에_appId_붙여넣기"
     };
     // ====================================================================
 
@@ -61,7 +97,7 @@
     // 공유 모드: 인증 없음 (모든 사용자가 같은 데이터 사용)
 
     const { useState, useEffect, useMemo } = React;
-    const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } = Recharts;
+    const { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend, PieChart, Pie } = Recharts;
 
     // ============================================================
     // 아이콘 (Lucide SVG path 직접 작성)
@@ -682,6 +718,45 @@
       );
     }
 
+    // 차원별 그룹핑 헬퍼
+    const groupByDim = (sites, key) => {
+      const map = {};
+      sites.forEach((s) => {
+        const v = (s[key] && String(s[key]).trim()) || '미분류';
+        map[v] = (map[v] || 0) + 1;
+      });
+      return Object.entries(map)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+    };
+
+    // 월별 그룹핑
+    const groupByMonth = (sites, dateKey) => {
+      const map = {};
+      sites.forEach((s) => {
+        const d = s[dateKey];
+        if (!d || typeof d !== 'string' || d.length < 7) return;
+        const m = d.slice(0, 7); // YYYY-MM
+        map[m] = (map[m] || 0) + 1;
+      });
+      return map;
+    };
+
+    // 시계열 데이터 구성 (등록/준공/오픈 통합)
+    const buildTimeline = (registered, completed, opened) => {
+      const months = new Set([
+        ...Object.keys(registered),
+        ...Object.keys(completed),
+        ...Object.keys(opened),
+      ]);
+      return Array.from(months).sort().map((m) => ({
+        month: m,
+        등록: registered[m] || 0,
+        준공: completed[m] || 0,
+        오픈: opened[m] || 0,
+      }));
+    };
+
     function Dashboard({ sites }) {
       const stats = useMemo(() => {
         const enriched = sites.map((s) => ({ ...s, _stage: getAutoStage(s) }));
@@ -695,7 +770,23 @@
         const avgMarginRate = withRev.length ? withRev.reduce((sum, s) => sum + getMarginRate(s), 0) / withRev.length : 0;
         const stageDistribution = STAGES.map((st) => ({ stage: st, count: enriched.filter((s) => s._stage === st).length }));
         const chargerSums = CHARGER_TYPES.map((t) => ({ type: t, count: enriched.reduce((sum, s) => sum + Number(s[t] || 0), 0) }));
-        return { total, active, done, totalChannels, totalKw, totalSubsidy, avgMarginRate, stageDistribution, chargerSums };
+
+        // 차원별
+        const byRegion = groupByDim(enriched, '지역').slice(0, 10);
+        const byInvestment = groupByDim(enriched, '투자유형');
+        const byBuilding = groupByDim(enriched, '건물유형').slice(0, 8);
+
+        // 시계열
+        const timeline = buildTimeline(
+          groupByMonth(enriched, '등록일자'),
+          groupByMonth(enriched, '준공완료일자'),
+          groupByMonth(enriched, '오픈일자')
+        );
+
+        return {
+          total, active, done, totalChannels, totalKw, totalSubsidy, avgMarginRate,
+          stageDistribution, chargerSums, byRegion, byInvestment, byBuilding, timeline,
+        };
       }, [sites]);
 
       return (
@@ -711,6 +802,7 @@
             </div>
           ) : (
             <>
+              {/* KPI 카드 */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <KpiCard IconComp={Icons.Building2} label="총 현장 수" value={stats.total} unit="개" color="#1E293B" />
                 <KpiCard IconComp={Icons.Clock} label="진행 중" value={stats.active} unit="개" color="#2C5282" />
@@ -721,9 +813,11 @@
                 <KpiCard IconComp={Icons.BarChart3} label="평균 마진률" value={`${(stats.avgMarginRate * 100).toFixed(1)}`} unit="%" color="#EC4899" />
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* 단계/충전기 차트 */}
+              <SectionTitle>단계 · 충전기</SectionTitle>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 <ChartCard title="단계별 사이트 분포">
-                  <ResponsiveContainer width="100%" height={280}>
+                  <ResponsiveContainer width="100%" height={260}>
                     <BarChart data={stats.stageDistribution} margin={{ top: 10, right: 10, left: -10, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E0" />
                       <XAxis dataKey="stage" tick={{ fontSize: 11, fill: '#57534E' }} />
@@ -737,7 +831,7 @@
                 </ChartCard>
 
                 <ChartCard title="충전기 종류별 합계">
-                  <ResponsiveContainer width="100%" height={280}>
+                  <ResponsiveContainer width="100%" height={260}>
                     <BarChart data={stats.chargerSums} margin={{ top: 10, right: 10, left: -10, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E0" />
                       <XAxis dataKey="type" tick={{ fontSize: 11, fill: '#57534E' }} />
@@ -748,9 +842,85 @@
                   </ResponsiveContainer>
                 </ChartCard>
               </div>
+
+              {/* 차원별 분석 */}
+              <SectionTitle>차원별 분석</SectionTitle>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <ChartCard title="지역별 (상위 10)">
+                  {stats.byRegion.length === 0 ? <EmptyChart /> : (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart data={stats.byRegion} layout="vertical" margin={{ top: 10, right: 10, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E0" />
+                        <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: '#57534E' }} />
+                        <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#57534E' }} width={60} />
+                        <Tooltip contentStyle={{ fontSize: 12 }} cursor={{ fill: '#F5F5F4' }} />
+                        <Bar dataKey="count" fill="#0EA5E9" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </ChartCard>
+
+                <ChartCard title="투자유형별">
+                  {stats.byInvestment.length === 0 ? <EmptyChart /> : (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <PieChart>
+                        <Pie data={stats.byInvestment} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={(e) => `${e.name} ${e.count}`}>
+                          {stats.byInvestment.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                        </Pie>
+                        <Tooltip contentStyle={{ fontSize: 12 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
+                </ChartCard>
+
+                <ChartCard title="건물유형별 (상위 8)">
+                  {stats.byBuilding.length === 0 ? <EmptyChart /> : (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart data={stats.byBuilding} margin={{ top: 10, right: 10, left: -10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E0" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#57534E' }} interval={0} angle={-25} textAnchor="end" height={50} />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#57534E' }} />
+                        <Tooltip contentStyle={{ fontSize: 12 }} cursor={{ fill: '#F5F5F4' }} />
+                        <Bar dataKey="count" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </ChartCard>
+              </div>
+
+              {/* 시계열 */}
+              <SectionTitle>월별 추이</SectionTitle>
+              <ChartCard title="등록 · 준공 · 오픈 시계열">
+                {stats.timeline.length === 0 ? <EmptyChart message="시계열 표시를 위한 일자 데이터가 부족합니다" /> : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={stats.timeline} margin={{ top: 10, right: 20, left: -10, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E0" />
+                      <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#57534E' }} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#57534E' }} />
+                      <Tooltip contentStyle={{ fontSize: 12 }} />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Line type="monotone" dataKey="등록" stroke="#1E293B" strokeWidth={2} dot={{ r: 4 }} />
+                      <Line type="monotone" dataKey="준공" stroke="#10B981" strokeWidth={2} dot={{ r: 4 }} />
+                      <Line type="monotone" dataKey="오픈" stroke="#F59E0B" strokeWidth={2} dot={{ r: 4 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </ChartCard>
             </>
           )}
         </div>
+      );
+    }
+
+    function SectionTitle({ children }) {
+      return (
+        <h3 className="text-sm font-bold text-stone-700 uppercase tracking-wider mb-3 mt-2">{children}</h3>
+      );
+    }
+
+    function EmptyChart({ message = '데이터가 부족합니다' }) {
+      return (
+        <div className="flex items-center justify-center h-[260px] text-sm text-stone-400">{message}</div>
       );
     }
 
