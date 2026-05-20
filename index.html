@@ -58,8 +58,7 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    const auth = firebase.auth();
-    const googleProvider = new firebase.auth.GoogleAuthProvider();
+    // 공유 모드: 인증 없음 (모든 사용자가 같은 데이터 사용)
 
     const { useState, useEffect, useMemo } = React;
     const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } = Recharts;
@@ -168,65 +167,13 @@
     };
 
     // ============================================================
-    // 최상위 App
+    // 최상위 App (공유 모드 - 인증 없음)
     // ============================================================
     function App() {
-      const [user, setUser] = useState(null);
-      const [authChecked, setAuthChecked] = useState(false);
-
-      useEffect(() => {
-        const unsub = auth.onAuthStateChanged((u) => {
-          setUser(u);
-          setAuthChecked(true);
-        });
-        return unsub;
-      }, []);
-
-      if (!authChecked) {
-        return (
-          <div className="min-h-screen bg-stone-50 flex items-center justify-center text-stone-500">
-            인증 확인 중…
-          </div>
-        );
-      }
-
-      if (!user) return <LoginScreen />;
-      return <AuthenticatedApp user={user} />;
+      return <AppContent />;
     }
 
-    function LoginScreen() {
-      const [loading, setLoading] = useState(false);
-      const handleLogin = async () => {
-        setLoading(true);
-        try {
-          await auth.signInWithPopup(googleProvider);
-        } catch (e) {
-          alert('로그인 실패: ' + e.message);
-          setLoading(false);
-        }
-      };
-
-      return (
-        <div className="min-h-screen bg-stone-50 flex items-center justify-center px-4">
-          <div className="bg-white border border-stone-200 rounded-lg shadow-sm max-w-md w-full p-8 text-center">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-900 rounded-full mb-5">
-              <Icons.Zap size={24} className="text-amber-400" />
-            </div>
-            <h1 className="text-2xl font-bold text-stone-900 mb-2">전기차 충전기 트래커</h1>
-            <p className="text-sm text-stone-500 mb-8">CPO 영업~구축 전공정 관리</p>
-            <button onClick={handleLogin} disabled={loading}
-                    className="w-full px-4 py-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-semibold rounded transition-colors flex items-center justify-center gap-2">
-              <Icons.LogIn size={18} /> {loading ? '로그인 중…' : 'Google로 로그인'}
-            </button>
-            <p className="text-xs text-stone-400 mt-6">
-              로그인하면 본인 데이터에만 접근 가능합니다. 여러 디바이스에서 동기화됩니다.
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    function AuthenticatedApp({ user }) {
+    function AppContent() {
       const [view, setView] = useState('list');
       const [sites, setSites] = useState([]);
       const [selectedId, setSelectedId] = useState(null);
@@ -235,7 +182,7 @@
       const [filterStage, setFilterStage] = useState('전체');
 
       useEffect(() => {
-        const sitesCol = db.collection('users').doc(user.uid).collection('sites');
+        const sitesCol = db.collection('sites');
         const unsub = sitesCol.onSnapshot(
           (snap) => {
             setSites(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -248,7 +195,7 @@
           }
         );
         return unsub;
-      }, [user.uid]);
+      }, []);
 
       const saveSite = async (site) => {
         try {
@@ -259,7 +206,7 @@
             등록일자: site.등록일자 || new Date().toISOString().slice(0, 10),
             updatedAt: new Date().toISOString(),
           };
-          await db.collection('users').doc(user.uid).collection('sites').doc(id).set(data);
+          await db.collection('sites').doc(id).set(data);
           return id;
         } catch (e) {
           console.error('save error', e);
@@ -271,7 +218,7 @@
       const deleteSite = async (id) => {
         if (!confirm('정말 삭제하시겠습니까? 되돌릴 수 없습니다.')) return;
         try {
-          await db.collection('users').doc(user.uid).collection('sites').doc(id).delete();
+          await db.collection('sites').doc(id).delete();
           setView('list');
           setSelectedId(null);
         } catch (e) {
@@ -280,16 +227,11 @@
         }
       };
 
-      const handleLogout = async () => {
-        if (!confirm('로그아웃 하시겠습니까?')) return;
-        try { await auth.signOut(); } catch (e) { alert(e.message); }
-      };
-
       const selectedSite = sites.find((s) => s.id === selectedId);
 
       return (
         <div className="min-h-screen bg-stone-50">
-          <Header view={view} setView={setView} onNew={() => { setSelectedId(null); setView('editor'); }} user={user} onLogout={handleLogout} />
+          <Header view={view} setView={setView} onNew={() => { setSelectedId(null); setView('editor'); }} />
           <main className="max-w-7xl mx-auto px-6 py-8">
             {loading ? (
               <div className="text-center py-20 text-stone-500">불러오는 중…</div>
@@ -309,13 +251,13 @@
       );
     }
 
-    function Header({ view, setView, onNew, user, onLogout }) {
+    function Header({ view, setView, onNew }) {
       return (
         <header className="bg-slate-900 text-white border-b-4 border-amber-500">
           <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between flex-wrap gap-2">
             <div>
               <h1 className="text-xl font-bold tracking-tight">전기차 충전기 워크플로우 트래커</h1>
-              <p className="text-xs text-stone-400 mt-0.5">CPO 영업~구축 전공정 관리 v1.0</p>
+              <p className="text-xs text-stone-400 mt-0.5">CPO 영업~구축 전공정 관리 v1.0 · 공유 모드</p>
             </div>
             <nav className="flex items-center gap-2 flex-wrap">
               <NavButton active={view === 'list'} onClick={() => setView('list')} IconComp={Icons.LayoutGrid}>사이트</NavButton>
@@ -324,16 +266,6 @@
                 className="ml-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 text-sm font-semibold rounded transition-colors flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-amber-300">
                 <Icons.Plus size={16} /> 새 사이트
               </button>
-              <div className="ml-3 flex items-center gap-2 pl-3 border-l border-white/20">
-                {user.photoURL && <img src={user.photoURL} alt="" className="w-7 h-7 rounded-full" />}
-                <span className="text-xs text-stone-300 max-w-[120px] truncate" title={user.email}>
-                  {user.displayName || user.email}
-                </span>
-                <button onClick={onLogout} title="로그아웃"
-                  className="p-1.5 text-stone-300 hover:text-white hover:bg-white/10 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400">
-                  <Icons.LogOut size={14} />
-                </button>
-              </div>
             </nav>
           </div>
         </header>
