@@ -136,6 +136,9 @@
       사업유형: ['신규', '교체', '철거'],
       공용비공용: ['공용', '비공용', '부분공용'],
       설치환경: ['실내', '실외'],
+      수전방식: ['단가계약', '모자분리', '신규수전(지중)', '신규수전(가공)'],
+      OX: ['', 'O', 'X'],
+      투심여부: ['', 'O', 'X', '불필요'],
       영업진행: ['', '접수', '상담', '검토', '보류', '취소', '완료'],
       실사진행: ['', '일정조율', '보류', '취소', '완료'],
       설계진행: ['', '설계/견적', '보류', '취소', '완료'],
@@ -278,6 +281,24 @@
       if (!rev) return 0;
       return getMargin(s) / rev;
     };
+
+    // 자동 계산: 시공단 스탠드 수량 = SP + SPC
+    const getStandQtySi = (s) => Number(s.SP || 0) + Number(s.SPC || 0);
+
+    // 자동 계산: 시공단 총 용량
+    const getTotalKwSi = (s) =>
+      Number(s.시공_과금형_수량 || 0) * 3 +
+      Number(s.시공_벽부_수량 || 0) * 7 +
+      getStandQtySi(s) * 7 +
+      Number(s.시공_50kW_수량 || 0) * 53 +
+      Number(s.시공_100kW_수량 || 0) * 105;
+
+    // 자동 계산: 매입 자동 합계
+    const getMaipAutoSum = (s) =>
+      Number(s.시설부담금 || 0) + Number(s.사용전검사 || 0) +
+      Number(s.감리선임_매입 || 0) + Number(s.전기안전관리자 || 0) +
+      Number(s.전기안전점검_매입 || 0) + Number(s.시공비_매입 || 0) +
+      Number(s.캐노피_매입 || 0) + Number(s.영업비 || 0) + Number(s.부지사용료 || 0);
 
     const formatCurrency = (n) => {
       if (!n) return '—';
@@ -565,7 +586,7 @@
 
     function SiteEditor({ site, onSave, onDelete, onCancel }) {
       const [draft, setDraft] = useState(site || {});
-      const [activeTab, setActiveTab] = useState('기본');
+      const [activeTab, setActiveTab] = useState('영업');
       const [saving, setSaving] = useState(false);
 
       useEffect(() => { setDraft(site || {}); }, [site]);
@@ -575,7 +596,7 @@
       const { statuses, nextAction, actionType, progressRate } = useMemo(() => getProgress(draft), [draft]);
 
       const handleSave = async () => {
-        if (!hasName) { alert('현장명은 필수입니다'); setActiveTab('기본'); return; }
+        if (!hasName) { alert('현장명은 필수입니다'); setActiveTab('영업'); return; }
         setSaving(true);
         await onSave(draft);
         setSaving(false);
@@ -594,7 +615,7 @@
         }
       };
 
-      const tabs = ['기본', '충전기', '담당자', '진행', '정산'];
+      const tabs = ['영업', '현장실사', '설계/견적', '계약', '착공', '시공', '준공', '정산', '비고'];
 
       return (
         <div>
@@ -657,12 +678,16 @@
               ))}
             </div>
 
-            <div className="p-6 space-y-5">
-              {activeTab === '기본' && <BasicForm draft={draft} update={update} />}
-              {activeTab === '충전기' && <ChargerForm draft={draft} update={update} />}
-              {activeTab === '담당자' && <PersonForm draft={draft} update={update} />}
-              {activeTab === '진행' && <ProgressForm draft={draft} update={update} />}
-              {activeTab === '정산' && <SettlementForm draft={draft} update={update} />}
+            <div className="p-6">
+              {activeTab === '영업' && <영업Form draft={draft} update={update} />}
+              {activeTab === '현장실사' && <현장실사Form draft={draft} update={update} />}
+              {activeTab === '설계/견적' && <설계견적Form draft={draft} update={update} />}
+              {activeTab === '계약' && <계약Form draft={draft} update={update} />}
+              {activeTab === '착공' && <착공Form draft={draft} update={update} />}
+              {activeTab === '시공' && <시공Form draft={draft} update={update} />}
+              {activeTab === '준공' && <준공Form draft={draft} update={update} />}
+              {activeTab === '정산' && <정산Form draft={draft} update={update} />}
+              {activeTab === '비고' && <비고Form draft={draft} update={update} />}
             </div>
           </div>
         </div>
@@ -718,152 +743,413 @@
       );
     };
 
-    function BasicForm({ draft, update }) {
-      return (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="현장명" required>
-              <TextInput value={draft.현장명} onChange={(v) => update('현장명', v)} placeholder="예: 서울 강남 OO빌딩" />
-            </Field>
-            <Field label="지역"><TextInput value={draft.지역} onChange={(v) => update('지역', v)} placeholder="예: 서울" /></Field>
-          </div>
-          <Field label="주소"><TextInput value={draft.주소} onChange={(v) => update('주소', v)} placeholder="상세 주소" /></Field>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="건물유형"><TextInput value={draft.건물유형} onChange={(v) => update('건물유형', v)} placeholder="예: 아파트, 오피스텔" /></Field>
-            <Field label="투자유형"><Select value={draft.투자유형} onChange={(v) => update('투자유형', v)} options={ENUMS.투자유형} /></Field>
-          </div>
-          <Field label="사업유형 (다중 선택 가능)">
-            <MultiCheck value={draft.사업유형} onChange={(v) => update('사업유형', v)} options={ENUMS.사업유형} />
-          </Field>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Field label="공용/비공용"><Select value={draft.공용비공용} onChange={(v) => update('공용비공용', v)} options={ENUMS.공용비공용} /></Field>
-            <Field label="설치환경"><Select value={draft.설치환경} onChange={(v) => update('설치환경', v)} options={ENUMS.설치환경} /></Field>
-            <Field label="주차면 수"><NumInput value={draft.주차면} onChange={(v) => update('주차면', v)} placeholder="0" /></Field>
-          </div>
-          <Field label="의무수량"><NumInput value={draft.의무수량} onChange={(v) => update('의무수량', v)} placeholder="0" /></Field>
-        </>
-      );
-    }
+    // 공통 헬퍼 컴포넌트
+    const FormSection = ({ title, children }) => (
+      <div>
+        <h3 className="text-xs font-bold text-stone-700 uppercase tracking-wider mb-3 pb-2 border-b border-stone-200">{title}</h3>
+        <div className="space-y-4">{children}</div>
+      </div>
+    );
 
-    function ChargerForm({ draft, update }) {
+    const AutoBox = ({ label, value, unit, color = 'text-slate-800' }) => (
+      <div className="px-3 py-2 bg-stone-50 border border-stone-200 rounded text-sm flex items-center justify-between">
+        <span className="text-stone-500 text-xs">{label}</span>
+        <span className={`font-bold num-mono ${color}`}>
+          {value}{unit && <span className="text-xs text-stone-400 ml-1">{unit}</span>}
+        </span>
+      </div>
+    );
+
+    const Textarea = ({ value, onChange, placeholder, rows = 3 }) => (
+      <textarea value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={rows}
+        className="w-full px-3 py-2 bg-white border border-stone-300 rounded text-sm focus:outline-none focus:border-slate-800 resize-y" />
+    );
+
+    // ============================================================
+    // 영업 탭 (34개 필드)
+    // ============================================================
+    function 영업Form({ draft, update }) {
       const totalKw = getTotalKw(draft);
       const totalCh = getTotalChannels(draft);
       return (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            {CHARGER_TYPES.map((t) => (
-              <Field key={t} label={`${t} (개)`}>
-                <NumInput value={draft[t]} onChange={(v) => update(t, v)} placeholder="0" />
-              </Field>
-            ))}
-          </div>
-          <div className="mt-4 p-4 bg-stone-50 border border-stone-200 rounded-lg flex items-center justify-around">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-slate-800 num-mono">{totalCh}</div>
-              <div className="text-xs text-stone-500 mt-1 uppercase tracking-wider">총 채널 (개)</div>
+        <div className="space-y-6">
+          <FormSection title="기본 정보">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="현장명" required><TextInput value={draft.현장명} onChange={(v) => update('현장명', v)} placeholder="예: 서울 강남 OO빌딩" /></Field>
+              <Field label="지역"><TextInput value={draft.지역} onChange={(v) => update('지역', v)} placeholder="예: 서울" /></Field>
             </div>
-            <div className="w-px h-12 bg-stone-200" />
-            <div className="text-center">
-              <div className="text-2xl font-bold text-slate-800 num-mono">{totalKw}</div>
-              <div className="text-xs text-stone-500 mt-1 uppercase tracking-wider">총 용량 (kW)</div>
+            <Field label="주소"><TextInput value={draft.주소} onChange={(v) => update('주소', v)} /></Field>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="건물유형"><TextInput value={draft.건물유형} onChange={(v) => update('건물유형', v)} placeholder="예: 아파트, 오피스텔" /></Field>
+              <Field label="투자유형"><Select value={draft.투자유형} onChange={(v) => update('투자유형', v)} options={ENUMS.투자유형} /></Field>
             </div>
-          </div>
-          <p className="text-xs text-stone-500 mt-2">
-            정격: 과금형 3kW, 7kW(벽부/스탠드) 7kW, 50kW(53), 100kW(105). 100kW만 2채널로 계산.
-          </p>
-        </>
+            <Field label="사업유형 (다중 선택)"><MultiCheck value={draft.사업유형} onChange={(v) => update('사업유형', v)} options={ENUMS.사업유형} /></Field>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Field label="공용/비공용"><Select value={draft.공용비공용} onChange={(v) => update('공용비공용', v)} options={ENUMS.공용비공용} /></Field>
+              <Field label="설치환경"><Select value={draft.설치환경} onChange={(v) => update('설치환경', v)} options={ENUMS.설치환경} /></Field>
+              <Field label="주차면 수"><NumInput value={draft.주차면} onChange={(v) => update('주차면', v)} /></Field>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Field label="의무수량"><NumInput value={draft.의무수량} onChange={(v) => update('의무수량', v)} /></Field>
+              <Field label="주차 시작층"><TextInput value={draft.주차_시작층} onChange={(v) => update('주차_시작층', v)} placeholder="예: B1" /></Field>
+              <Field label="예상 설치위치(층)"><TextInput value={draft.예상_설치위치} onChange={(v) => update('예상_설치위치', v)} placeholder="예: B2" /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="충전기 종류 (영업 예상)">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              {CHARGER_TYPES.map((t) => (
+                <Field key={t} label={`${t} (개)`}><NumInput value={draft[t]} onChange={(v) => update(t, v)} placeholder="0" /></Field>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <AutoBox label="총 채널 (개)" value={totalCh || '—'} />
+              <AutoBox label="총 용량 (kW)" value={totalKw || '—'} />
+            </div>
+            <p className="text-xs text-stone-500">정격: 과금형 3, 7kW 7, 50kW 53, 100kW 105. 100kW만 2채널.</p>
+          </FormSection>
+
+          <FormSection title="신청자 (발주자)">
+            <Field label="이름 (소속/직책)"><TextInput value={draft.신청자_이름} onChange={(v) => update('신청자_이름', v)} placeholder="홍길동 / OO그룹 부장" /></Field>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="연락처"><TextInput value={draft.신청자_연락처} onChange={(v) => update('신청자_연락처', v)} /></Field>
+              <Field label="메일"><TextInput type="email" value={draft.신청자_메일} onChange={(v) => update('신청자_메일', v)} /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="HEV 담당자 + 현장담당자">
+            <Field label="HEV 영업 담당자"><TextInput value={draft.HEV영업담당자} onChange={(v) => update('HEV영업담당자', v)} /></Field>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="현장담당자 이름"><TextInput value={draft.현장담당자_이름} onChange={(v) => update('현장담당자_이름', v)} /></Field>
+              <Field label="현장담당자 소속"><TextInput value={draft.현장담당자_소속} onChange={(v) => update('현장담당자_소속', v)} /></Field>
+              <Field label="현장담당자 연락처"><TextInput value={draft.현장담당자_연락처} onChange={(v) => update('현장담당자_연락처', v)} /></Field>
+              <Field label="현장담당자 메일"><TextInput type="email" value={draft.현장담당자_메일} onChange={(v) => update('현장담당자_메일', v)} /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="영업사 (외부 파트너)">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="업체명"><TextInput value={draft.영업사_업체명} onChange={(v) => update('영업사_업체명', v)} /></Field>
+              <Field label="담당자"><TextInput value={draft.영업사_담당자} onChange={(v) => update('영업사_담당자', v)} /></Field>
+              <Field label="연락처"><TextInput value={draft.영업사_연락처} onChange={(v) => update('영업사_연락처', v)} /></Field>
+              <Field label="메일"><TextInput type="email" value={draft.영업사_메일} onChange={(v) => update('영업사_메일', v)} /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="영업비 / 부지사용료">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="영업비 (원)"><NumInput value={draft.영업비} onChange={(v) => update('영업비', v)} /></Field>
+              <Field label="부지사용료 (원)"><NumInput value={draft.부지사용료} onChange={(v) => update('부지사용료', v)} /></Field>
+            </div>
+            <Field label="요금 정보 (메모)"><Textarea value={draft.요금정보_메모} onChange={(v) => update('요금정보_메모', v)} placeholder="협상 내용·특약 등 자유 기록" /></Field>
+          </FormSection>
+
+          <FormSection title="영업 진행현황">
+            <Field label="진행현황"><Select value={draft.영업진행} onChange={(v) => update('영업진행', v)} options={ENUMS.영업진행} /></Field>
+          </FormSection>
+        </div>
       );
     }
 
-    function PersonForm({ draft, update }) {
+    // ============================================================
+    // 현장실사 탭 (14개)
+    // ============================================================
+    function 현장실사Form({ draft, update }) {
       return (
-        <>
-          <div>
-            <h3 className="text-xs font-bold text-stone-600 uppercase tracking-wider mb-3 pb-2 border-b border-stone-100">내부 담당자</h3>
+        <div className="space-y-6">
+          <FormSection title="실사 담당자">
+            <Field label="HEV 시공 담당자"><TextInput value={draft.HEV시공담당자} onChange={(v) => update('HEV시공담당자', v)} /></Field>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="HEV 영업 담당자"><TextInput value={draft.HEV영업담당자} onChange={(v) => update('HEV영업담당자', v)} /></Field>
-              <Field label="HEV 시공 담당자"><TextInput value={draft.HEV시공담당자} onChange={(v) => update('HEV시공담당자', v)} /></Field>
-            </div>
-          </div>
-          <div className="mt-6">
-            <h3 className="text-xs font-bold text-stone-600 uppercase tracking-wider mb-3 pb-2 border-b border-stone-100">현장담당자 (발주처)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="이름"><TextInput value={draft.현장담당자_이름} onChange={(v) => update('현장담당자_이름', v)} /></Field>
-              <Field label="소속"><TextInput value={draft.현장담당자_소속} onChange={(v) => update('현장담당자_소속', v)} /></Field>
-              <Field label="연락처"><TextInput value={draft.현장담당자_연락처} onChange={(v) => update('현장담당자_연락처', v)} /></Field>
-              <Field label="메일"><TextInput value={draft.현장담당자_메일} onChange={(v) => update('현장담당자_메일', v)} type="email" /></Field>
-            </div>
-          </div>
-          <div className="mt-6">
-            <h3 className="text-xs font-bold text-stone-600 uppercase tracking-wider mb-3 pb-2 border-b border-stone-100">시공사</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="시공사"><TextInput value={draft.시공사} onChange={(v) => update('시공사', v)} /></Field>
+              <Field label="시공사 (= 실사업체)"><TextInput value={draft.시공사} onChange={(v) => update('시공사', v)} /></Field>
               <Field label="시공사 담당자"><TextInput value={draft.시공사담당자} onChange={(v) => update('시공사담당자', v)} /></Field>
             </div>
-          </div>
-        </>
+          </FormSection>
+
+          <FormSection title="일정">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Field label="요청일자"><TextInput type="date" value={draft.실사_요청일자} onChange={(v) => update('실사_요청일자', v)} /></Field>
+              <Field label="기한일자 (SLA)"><TextInput type="date" value={draft.실사_기한일자} onChange={(v) => update('실사_기한일자', v)} /></Field>
+              <Field label="실사일자"><TextInput type="date" value={draft.실사_실사일자} onChange={(v) => update('실사_실사일자', v)} /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="실사 결과">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="설치위치 (층/기둥)"><TextInput value={draft.실사_설치위치} onChange={(v) => update('실사_설치위치', v)} placeholder="예: B2 / A-3 기둥" /></Field>
+              <Field label="보고서 작성여부"><Select value={draft.보고서_작성여부} onChange={(v) => update('보고서_작성여부', v)} options={ENUMS.OX} /></Field>
+              <Field label="주차장 개방여부"><Select value={draft.주차장_개방여부} onChange={(v) => update('주차장_개방여부', v)} options={ENUMS.OX} /></Field>
+              <Field label="주차장 과금여부"><TextInput value={draft.주차장_과금여부} onChange={(v) => update('주차장_과금여부', v)} placeholder="자유 입력 (금액 등)" /></Field>
+              <Field label="수전방식"><Select value={draft.수전방식} onChange={(v) => update('수전방식', v)} options={ENUMS.수전방식} /></Field>
+              <Field label="인입거리 (m)"><NumInput value={draft.인입거리} onChange={(v) => update('인입거리', v)} /></Field>
+              <Field label="단가공사 여부"><Select value={draft.단가공사_여부} onChange={(v) => update('단가공사_여부', v)} options={ENUMS.OX} /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="실사 진행현황">
+            <Field label="진행현황"><Select value={draft.실사진행} onChange={(v) => update('실사진행', v)} options={ENUMS.실사진행} /></Field>
+          </FormSection>
+        </div>
       );
     }
 
-    function ProgressForm({ draft, update }) {
-      const stages = [
-        ['영업', '영업진행', ENUMS.영업진행],
-        ['현장실사', '실사진행', ENUMS.실사진행],
-        ['설계/견적', '설계진행', ENUMS.설계진행],
-        ['계약', '계약진행', ENUMS.계약진행],
-        ['착공', '착공진행', ENUMS.착공진행],
-        ['시공', '시공진행', ENUMS.시공진행],
-        ['준공', '준공진행', ENUMS.준공진행],
-        ['정산', '정산진행', ENUMS.정산진행],
+    // ============================================================
+    // 설계/견적 탭 (8개)
+    // ============================================================
+    function 설계견적Form({ draft, update }) {
+      const sum = getMaipAutoSum(draft);
+      return (
+        <div className="space-y-6">
+          <FormSection title="매입비용 항목">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="시설부담금 (원)"><NumInput value={draft.시설부담금} onChange={(v) => update('시설부담금', v)} /></Field>
+              <Field label="사용전검사 (원)"><NumInput value={draft.사용전검사} onChange={(v) => update('사용전검사', v)} /></Field>
+              <Field label="감리선임 (원)"><NumInput value={draft.감리선임_매입} onChange={(v) => update('감리선임_매입', v)} /></Field>
+              <Field label="전기안전관리자 (원)"><NumInput value={draft.전기안전관리자} onChange={(v) => update('전기안전관리자', v)} /></Field>
+              <Field label="전기안전점검 (원)"><NumInput value={draft.전기안전점검_매입} onChange={(v) => update('전기안전점검_매입', v)} /></Field>
+              <Field label="시공비 (원)"><NumInput value={draft.시공비_매입} onChange={(v) => update('시공비_매입', v)} /></Field>
+              <Field label="캐노피 (원)"><NumInput value={draft.캐노피_매입} onChange={(v) => update('캐노피_매입', v)} /></Field>
+            </div>
+            <AutoBox label="매입 자동 합계 (영업비/부지사용료 포함)" value={sum.toLocaleString()} unit="원" />
+            <p className="text-xs text-stone-500">참고용 합계. 마진 계산엔 정산 탭의 공사 매입(원) 값이 사용됩니다.</p>
+          </FormSection>
+
+          <FormSection title="설계/견적 진행현황">
+            <Field label="진행현황"><Select value={draft.설계진행} onChange={(v) => update('설계진행', v)} options={ENUMS.설계진행} /></Field>
+          </FormSection>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 계약 탭 (6개)
+    // ============================================================
+    function 계약Form({ draft, update }) {
+      return (
+        <div className="space-y-6">
+          <FormSection title="계약 정보">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="계약일"><TextInput type="date" value={draft.계약일} onChange={(v) => update('계약일', v)} /></Field>
+              <Field label="계약기간"><TextInput value={draft.계약기간} onChange={(v) => update('계약기간', v)} placeholder="예: 5년, 2025-01-01 ~ 2030-01-01" /></Field>
+              <Field label="OPEN 기안여부"><Select value={draft.OPEN_기안여부} onChange={(v) => update('OPEN_기안여부', v)} options={ENUMS.OX} /></Field>
+              <Field label="투심 여부"><Select value={draft.투심_여부} onChange={(v) => update('투심_여부', v)} options={ENUMS.투심여부} /></Field>
+              <Field label="SID"><TextInput value={draft.SID} onChange={(v) => update('SID', v)} /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="계약 진행현황">
+            <Field label="진행현황"><Select value={draft.계약진행} onChange={(v) => update('계약진행', v)} options={ENUMS.계약진행} /></Field>
+          </FormSection>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 착공 탭 (41개)
+    // ============================================================
+    function 착공Form({ draft, update }) {
+      const standQty = getStandQtySi(draft);
+      const totalKwSi = getTotalKwSi(draft);
+      return (
+        <div className="space-y-6">
+          <FormSection title="출하">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="수요조사 작성"><TextInput value={draft.수요조사_작성} onChange={(v) => update('수요조사_작성', v)} placeholder="예: 완료" /></Field>
+              <Field label="출하요청 기안"><TextInput value={draft.출하요청_기안} onChange={(v) => update('출하요청_기안', v)} /></Field>
+              <Field label="출하예정일"><TextInput type="date" value={draft.출하예정일} onChange={(v) => update('출하예정일', v)} /></Field>
+              <Field label="출하여부"><TextInput value={draft.출하여부} onChange={(v) => update('출하여부', v)} /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="과금형 제품정보">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Field label="수량 (개)"><NumInput value={draft.시공_과금형_수량} onChange={(v) => update('시공_과금형_수량', v)} /></Field>
+              <Field label="제조사"><TextInput value={draft.시공_과금형_제조사} onChange={(v) => update('시공_과금형_제조사', v)} /></Field>
+              <Field label="모델명"><TextInput value={draft.시공_과금형_모델명} onChange={(v) => update('시공_과금형_모델명', v)} /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="벽부 제품정보 (7kW)">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Field label="수량 (개)"><NumInput value={draft.시공_벽부_수량} onChange={(v) => update('시공_벽부_수량', v)} /></Field>
+              <Field label="제조사"><TextInput value={draft.시공_벽부_제조사} onChange={(v) => update('시공_벽부_제조사', v)} /></Field>
+              <Field label="모델명"><TextInput value={draft.시공_벽부_모델명} onChange={(v) => update('시공_벽부_모델명', v)} /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="스탠드 제품정보 (7kW)">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <AutoBox label="수량 (= SP + SPC)" value={standQty || '—'} unit="개" />
+              <Field label="제조사"><TextInput value={draft.시공_스탠드_제조사} onChange={(v) => update('시공_스탠드_제조사', v)} /></Field>
+              <Field label="모델명"><TextInput value={draft.시공_스탠드_모델명} onChange={(v) => update('시공_스탠드_모델명', v)} /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="7kW 상품정보 (SP / C / SPC)">
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="SP (개) - 스탠드 단독"><NumInput value={draft.SP} onChange={(v) => update('SP', v)} /></Field>
+              <Field label="C (개) - 벽부 + 캐노피"><NumInput value={draft.C} onChange={(v) => update('C', v)} /></Field>
+              <Field label="SPC (개) - 스탠드 + 캐노피"><NumInput value={draft.SPC} onChange={(v) => update('SPC', v)} /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="50kW 제품정보">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <Field label="수량 (개)"><NumInput value={draft.시공_50kW_수량} onChange={(v) => update('시공_50kW_수량', v)} /></Field>
+              <Field label="제조사"><TextInput value={draft.시공_50kW_제조사} onChange={(v) => update('시공_50kW_제조사', v)} /></Field>
+              <Field label="모델명"><TextInput value={draft.시공_50kW_모델명} onChange={(v) => update('시공_50kW_모델명', v)} /></Field>
+              <Field label="캐노피 (개)"><NumInput value={draft.시공_50kW_캐노피} onChange={(v) => update('시공_50kW_캐노피', v)} /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="100kW 제품정보">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <Field label="수량 (개)"><NumInput value={draft.시공_100kW_수량} onChange={(v) => update('시공_100kW_수량', v)} /></Field>
+              <Field label="제조사"><TextInput value={draft.시공_100kW_제조사} onChange={(v) => update('시공_100kW_제조사', v)} /></Field>
+              <Field label="모델명"><TextInput value={draft.시공_100kW_모델명} onChange={(v) => update('시공_100kW_모델명', v)} /></Field>
+              <Field label="캐노피 (개)"><NumInput value={draft.시공_100kW_캐노피} onChange={(v) => update('시공_100kW_캐노피', v)} /></Field>
+            </div>
+            <AutoBox label="시공단 총 용량" value={totalKwSi || '—'} unit="kW" />
+          </FormSection>
+
+          <FormSection title="전기사용신청">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Field label="접수 여부"><TextInput value={draft.전기사용신청_접수} onChange={(v) => update('전기사용신청_접수', v)} /></Field>
+              <Field label="인입 방식"><TextInput value={draft.전기사용신청_인입방식} onChange={(v) => update('전기사용신청_인입방식', v)} /></Field>
+              <Field label="선택 요금"><TextInput value={draft.전기사용신청_선택요금} onChange={(v) => update('전기사용신청_선택요금', v)} /></Field>
+              <Field label="시설부담금"><NumInput value={draft.전기사용신청_시설부담금} onChange={(v) => update('전기사용신청_시설부담금', v)} /></Field>
+              <Field label="납부여부"><TextInput value={draft.전기사용신청_납부여부} onChange={(v) => update('전기사용신청_납부여부', v)} /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="각종검사">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Field label="점검 신청"><TextInput value={draft.각종검사_점검신청} onChange={(v) => update('각종검사_점검신청', v)} /></Field>
+              <Field label="검사 신청"><TextInput value={draft.각종검사_검사신청} onChange={(v) => update('각종검사_검사신청', v)} /></Field>
+              <Field label="수수료"><NumInput value={draft.각종검사_수수료} onChange={(v) => update('각종검사_수수료', v)} /></Field>
+              <Field label="납부여부"><TextInput value={draft.각종검사_납부여부} onChange={(v) => update('각종검사_납부여부', v)} /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="감리선임">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Field label="업체명"><TextInput value={draft.감리선임_업체명} onChange={(v) => update('감리선임_업체명', v)} /></Field>
+              <Field label="수수료"><NumInput value={draft.감리선임_수수료} onChange={(v) => update('감리선임_수수료', v)} /></Field>
+              <Field label="납부여부"><TextInput value={draft.감리선임_납부여부} onChange={(v) => update('감리선임_납부여부', v)} /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="전기안전점검">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Field label="신청"><TextInput value={draft.전기안전점검_신청} onChange={(v) => update('전기안전점검_신청', v)} /></Field>
+              <Field label="수수료"><NumInput value={draft.전기안전점검_수수료} onChange={(v) => update('전기안전점검_수수료', v)} /></Field>
+              <Field label="납부여부"><TextInput value={draft.전기안전점검_납부여부} onChange={(v) => update('전기안전점검_납부여부', v)} /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="착공 진행현황">
+            <Field label="진행현황"><Select value={draft.착공진행} onChange={(v) => update('착공진행', v)} options={ENUMS.착공진행} /></Field>
+          </FormSection>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 시공 탭 (11개)
+    // ============================================================
+    function 시공Form({ draft, update }) {
+      const steps = [
+        ['시공_착공', '착공'],
+        ['배관배선', '배관/배선'],
+        ['분전반_설치', '분전반 설치'],
+        ['시설공사', '시설공사 (기초/볼라드 등)'],
+        ['주차도색', '주차도색'],
+        ['계량기_부설', '계량기 부설'],
+        ['사용전_점검', '사용전 점검'],
+        ['사용전_검사', '사용전 검사'],
+        ['전기안전_점검', '전기안전 점검'],
+        ['품질검수', '품질검수 (시운전 TEST 포함)'],
       ];
       return (
-        <>
-          <p className="text-xs text-stone-500 mb-3">
-            각 단계 진행현황을 입력하면 가장 진행된 단계가 사이트의 현재 단계로 자동 결정됩니다.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {stages.map(([label, key, opts]) => (
-              <Field key={key} label={label}>
-                <Select value={draft[key]} onChange={(v) => update(key, v)} options={opts} />
-              </Field>
-            ))}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5 pt-5 border-t border-stone-100">
-            <Field label="준공완료일자"><TextInput type="date" value={draft.준공완료일자} onChange={(v) => update('준공완료일자', v)} /></Field>
-            <Field label="오픈일자"><TextInput type="date" value={draft.오픈일자} onChange={(v) => update('오픈일자', v)} /></Field>
-          </div>
-        </>
+        <div className="space-y-6">
+          <FormSection title="사업추진 현황">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {steps.map(([key, label]) => (
+                <Field key={key} label={label}><TextInput value={draft[key]} onChange={(v) => update(key, v)} placeholder="예: 완료 / 진행 중 / 일자 등" /></Field>
+              ))}
+            </div>
+          </FormSection>
+
+          <FormSection title="시공 진행현황">
+            <Field label="진행현황"><Select value={draft.시공진행} onChange={(v) => update('시공진행', v)} options={ENUMS.시공진행} /></Field>
+          </FormSection>
+        </div>
       );
     }
 
-    function SettlementForm({ draft, update }) {
+    // ============================================================
+    // 준공 탭 (3개)
+    // ============================================================
+    function 준공Form({ draft, update }) {
+      return (
+        <div className="space-y-6">
+          <FormSection title="준공 정보">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="준공완료일자"><TextInput type="date" value={draft.준공완료일자} onChange={(v) => update('준공완료일자', v)} /></Field>
+              <Field label="오픈일자"><TextInput type="date" value={draft.오픈일자} onChange={(v) => update('오픈일자', v)} /></Field>
+            </div>
+            <Field label="준공서류 제출현황"><Select value={draft.준공진행} onChange={(v) => update('준공진행', v)} options={ENUMS.준공진행} /></Field>
+          </FormSection>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 정산 탭 (9개)
+    // ============================================================
+    function 정산Form({ draft, update }) {
       const margin = getMargin(draft);
       const marginRate = getMarginRate(draft);
+      const autoSum = getMaipAutoSum(draft);
       return (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Field label="보조금 (원)"><NumInput value={draft.보조금} onChange={(v) => update('보조금', v)} placeholder="0" /></Field>
-            <Field label="공사 매출 (원)"><NumInput value={draft.공사매출} onChange={(v) => update('공사매출', v)} placeholder="0" /></Field>
-            <Field label="공사 매입 (원)"><NumInput value={draft.공사매입} onChange={(v) => update('공사매입', v)} placeholder="0" /></Field>
-          </div>
-          <div className="mt-4 p-4 bg-stone-50 border border-stone-200 rounded-lg grid grid-cols-2 gap-4">
-            <div className="text-center">
-              <div className={`text-2xl font-bold num-mono ${margin >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                {margin ? margin.toLocaleString() : '—'}
-              </div>
-              <div className="text-xs text-stone-500 mt-1 uppercase tracking-wider">마진 (원)</div>
+        <div className="space-y-6">
+          <FormSection title="시공비 승인">
+            <Field label="시공비 승인현황"><Select value={draft.정산진행} onChange={(v) => update('정산진행', v)} options={ENUMS.정산진행} /></Field>
+          </FormSection>
+
+          <FormSection title="보조금">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Field label="금액 (원)"><NumInput value={draft.보조금} onChange={(v) => update('보조금', v)} /></Field>
+              <Field label="신청일"><TextInput type="date" value={draft.보조금_신청일} onChange={(v) => update('보조금_신청일', v)} /></Field>
+              <Field label="지급일"><TextInput type="date" value={draft.보조금_지급일} onChange={(v) => update('보조금_지급일', v)} /></Field>
             </div>
-            <div className="text-center">
-              <div className={`text-2xl font-bold num-mono ${marginRate >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                {marginRate ? `${(marginRate * 100).toFixed(1)}%` : '—'}
-              </div>
-              <div className="text-xs text-stone-500 mt-1 uppercase tracking-wider">마진률</div>
+          </FormSection>
+
+          <FormSection title="투자비 정리 (VAT 제외)">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="공사 매출 (원)"><NumInput value={draft.공사매출} onChange={(v) => update('공사매출', v)} /></Field>
+              <Field label="공사 매입 (원)"><NumInput value={draft.공사매입} onChange={(v) => update('공사매입', v)} /></Field>
             </div>
-          </div>
-          <p className="text-xs text-stone-500 mt-2">
-            마진 = 공사 매출 − (공사 매입 − 보조금). 공사 매출은 고객사 청구 1회성 공사비.
-          </p>
-        </>
+            <AutoBox label="매입 자동 합계 (설계/견적 항목 + 영업비 + 부지사용료) — 참고용" value={autoSum.toLocaleString()} unit="원" />
+            <div className="grid grid-cols-2 gap-4">
+              <AutoBox label="마진 (공사매출 - 공사매입 + 보조금)" value={margin ? margin.toLocaleString() : '—'} unit="원" color={margin >= 0 ? 'text-emerald-700' : 'text-red-600'} />
+              <AutoBox label="마진률" value={marginRate ? `${(marginRate * 100).toFixed(1)}%` : '—'} color={marginRate >= 0 ? 'text-emerald-700' : 'text-red-600'} />
+            </div>
+            <p className="text-xs text-stone-500">마진 = 공사 매출 − (공사 매입 − 보조금). 공사 매출은 고객사 청구 1회성 공사비.</p>
+          </FormSection>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 비고 탭 (1개)
+    // ============================================================
+    function 비고Form({ draft, update }) {
+      return (
+        <div className="space-y-6">
+          <FormSection title="비고">
+            <Field label="자유 메모"><Textarea value={draft.비고} onChange={(v) => update('비고', v)} rows={10} placeholder="현장 관련 자유 메모..." /></Field>
+          </FormSection>
+        </div>
       );
     }
 
