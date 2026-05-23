@@ -408,13 +408,21 @@
     function SiteList({ sites, searchTerm, setSearchTerm, filterStage, setFilterStage, sortBy, setSortBy, onEdit, onNew }) {
       const filtered = useMemo(() => {
         const term = searchTerm.toLowerCase();
-        const enriched = sites.map((s) => ({
-          ...s,
-          _stage: getAutoStage(s),
-          _progressRate: getProgress(s).progressRate,
-        }));
+        const enriched = sites.map((s) => {
+          const prog = getProgress(s);
+          return {
+            ...s,
+            _stage: getAutoStage(s),
+            _progressRate: prog.progressRate,
+            _hasProblem: prog.statuses.some((st) => st.status === 'problem'),
+          };
+        });
         const result = enriched.filter((s) => {
-          if (filterStage !== '전체' && s._stage !== filterStage) return false;
+          if (filterStage === '⚠️ 보류 있음') {
+            if (!s._hasProblem) return false;
+          } else if (filterStage !== '전체') {
+            if (s._stage !== filterStage) return false;
+          }
           if (!term) return true;
           return (
             (s.현장명 || '').toLowerCase().includes(term) ||
@@ -457,6 +465,7 @@
                 className="px-3 py-2 bg-white border border-stone-300 rounded text-sm focus:outline-none focus:border-slate-800">
                 <option>전체</option>
                 {STAGES.map((s) => <option key={s}>{s}</option>)}
+                <option>⚠️ 보류 있음</option>
               </select>
             </div>
             <div className="flex items-center gap-2">
@@ -563,6 +572,7 @@
       const update = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
       const isDirty = useMemo(() => JSON.stringify(site || {}) !== JSON.stringify(draft || {}), [site, draft]);
       const hasName = !!(draft.현장명 && draft.현장명.trim());
+      const { statuses, nextAction, actionType, progressRate } = useMemo(() => getProgress(draft), [draft]);
 
       const handleSave = async () => {
         if (!hasName) { alert('현장명은 필수입니다'); setActiveTab('기본'); return; }
@@ -610,7 +620,7 @@
           </div>
 
           <div className="bg-white border border-stone-200 rounded-lg overflow-hidden">
-            <div className="px-6 pt-6 pb-2 border-b border-stone-100">
+            <div className="px-6 pt-6 pb-4 border-b border-stone-100">
               <h2 className="text-xl font-bold text-stone-900">
                 {site ? draft.현장명 || '(이름 없음)' : '새 사이트 등록'}
               </h2>
@@ -619,6 +629,21 @@
                   등록 {site.등록일자 || '—'} · 자동 단계 [{getAutoStage(draft) || '—'}]
                 </p>
               )}
+              <div className="mt-4">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] text-stone-500 uppercase tracking-wider font-medium">공정률</span>
+                  <span className="text-sm font-bold text-stone-900 num-mono">{progressRate}%</span>
+                </div>
+                <div className="flex gap-0.5 mb-1.5">
+                  {statuses.map((s) => (
+                    <div key={s.key} className={`flex-1 h-2 rounded-sm ${PROGRESS_COLOR_MAP[s.status]}`}
+                      title={`${s.label}: ${s.value || '미진행'}`} />
+                  ))}
+                </div>
+                <p className={`text-xs ${ACTION_STYLE[actionType]}`}>
+                  {ACTION_PREFIX[actionType]}{nextAction}
+                </p>
+              </div>
             </div>
 
             <div className="px-6 border-b border-stone-100 flex gap-1 overflow-x-auto">
@@ -883,7 +908,7 @@
 
     function Dashboard({ sites }) {
       const stats = useMemo(() => {
-        const enriched = sites.map((s) => ({ ...s, _stage: getAutoStage(s) }));
+        const enriched = sites.map((s) => ({ ...s, _stage: getAutoStage(s), _prog: getProgress(s) }));
         const total = enriched.length;
         const active = enriched.filter((s) => s._stage && s._stage !== '준공' && s._stage !== '정산').length;
         const done = enriched.filter((s) => s._stage === '준공' || s._stage === '정산').length;
@@ -892,6 +917,8 @@
         const totalSubsidy = enriched.reduce((sum, s) => sum + Number(s.보조금 || 0), 0);
         const withRev = enriched.filter((s) => Number(s.공사매출 || 0) > 0);
         const avgMarginRate = withRev.length ? withRev.reduce((sum, s) => sum + getMarginRate(s), 0) / withRev.length : 0;
+        const avgProgressRate = total ? enriched.reduce((sum, s) => sum + s._prog.progressRate, 0) / total : 0;
+        const problemCount = enriched.filter((s) => s._prog.statuses.some((st) => st.status === 'problem')).length;
         const stageDistribution = STAGES.map((st) => ({ stage: st, count: enriched.filter((s) => s._stage === st).length }));
         const chargerSums = CHARGER_TYPES.map((t) => ({ type: t, count: enriched.reduce((sum, s) => sum + Number(s[t] || 0), 0) }));
 
@@ -908,7 +935,7 @@
         );
 
         return {
-          total, active, done, totalChannels, totalKw, totalSubsidy, avgMarginRate,
+          total, active, done, totalChannels, totalKw, totalSubsidy, avgMarginRate, avgProgressRate, problemCount,
           stageDistribution, chargerSums, byRegion, byInvestment, byBuilding, timeline,
         };
       }, [sites]);
@@ -931,11 +958,25 @@
                 <KpiCard IconComp={Icons.Building2} label="총 현장 수" value={stats.total} unit="개" color="#1E293B" />
                 <KpiCard IconComp={Icons.Clock} label="진행 중" value={stats.active} unit="개" color="#2C5282" />
                 <KpiCard IconComp={Icons.CheckCircle2} label="준공/정산" value={stats.done} unit="개" color="#10B981" />
+                <KpiCard IconComp={Icons.BarChart3} label="평균 공정률" value={`${stats.avgProgressRate.toFixed(0)}`} unit="%" color="#06B6D4" />
                 <KpiCard IconComp={Icons.Zap} label="총 채널" value={stats.totalChannels} unit="개" color="#F59E0B" />
                 <KpiCard IconComp={Icons.TrendingUp} label="총 용량" value={stats.totalKw.toLocaleString()} unit="kW" color="#0EA5E9" />
                 <KpiCard IconComp={Icons.DollarSign} label="보조금 합계" value={formatCurrency(stats.totalSubsidy)} unit="원" color="#8B5CF6" />
                 <KpiCard IconComp={Icons.BarChart3} label="평균 마진률" value={`${(stats.avgMarginRate * 100).toFixed(1)}`} unit="%" color="#EC4899" />
               </div>
+
+              {/* 보류 알림 */}
+              {stats.problemCount > 0 && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+                  <span className="text-2xl">⚠️</span>
+                  <div>
+                    <p className="text-sm font-semibold text-red-800">
+                      <span className="num-mono">{stats.problemCount}</span>개 사이트에 보류/취소된 단계가 있습니다
+                    </p>
+                    <p className="text-xs text-red-700 mt-0.5">사이트 목록에서 "공정률 낮은 순"으로 정렬하면 빠르게 확인할 수 있습니다</p>
+                  </div>
+                </div>
+              )}
 
               {/* 단계/충전기 차트 */}
               <SectionTitle>단계 · 충전기</SectionTitle>
