@@ -32,6 +32,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
+  <!-- SheetJS (xlsx 가져오기/내보내기) -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
   <style>
     body {
       font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -124,6 +127,8 @@
       CheckCircle2: (p) => <I {...p}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></I>,
       LogOut: (p) => <I {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></I>,
       LogIn: (p) => <I {...p}><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></I>,
+      Download: (p) => <I {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></I>,
+      Upload: (p) => <I {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></I>,
     };
 
     // ============================================================
@@ -308,6 +313,202 @@
     };
 
     // ============================================================
+    // Excel 매핑 (한글 헤더 ↔ 데이터 키)
+    // ============================================================
+    const HEADER_TO_KEY = {
+      'id': 'id',
+      '현장명': '현장명', '지역': '지역', '주소': '주소', '건물유형': '건물유형',
+      '투자유형': '투자유형', '사업유형': '사업유형',
+      '공용/비공용': '공용비공용', '주차면': '주차면', '의무수량': '의무수량',
+      '설치환경': '설치환경', '주차 시작층': '주차_시작층', '예상 설치위치': '예상_설치위치',
+      '과금형(개)': '과금형', '7kW벽부(개)': '7kW벽부', '7kW스탠드(개)': '7kW스탠드',
+      '50kW(개)': '50kW', '100kW(개)': '100kW',
+      '신청자 이름': '신청자_이름', '신청자 연락처': '신청자_연락처', '신청자 메일': '신청자_메일',
+      'HEV 영업담당자': 'HEV영업담당자',
+      '현장담당자 이름': '현장담당자_이름', '현장담당자 소속': '현장담당자_소속',
+      '현장담당자 연락처': '현장담당자_연락처', '현장담당자 메일': '현장담당자_메일',
+      '영업사 업체명': '영업사_업체명', '영업사 담당자': '영업사_담당자',
+      '영업사 연락처': '영업사_연락처', '영업사 메일': '영업사_메일',
+      '영업비(원)': '영업비', '부지사용료(원)': '부지사용료', '요금 정보(메모)': '요금정보_메모',
+      '영업 진행현황': '영업진행',
+      'HEV 시공담당자': 'HEV시공담당자', '시공사': '시공사', '시공사 담당자': '시공사담당자',
+      '실사 요청일자': '실사_요청일자', '실사 기한일자': '실사_기한일자', '실사 실사일자': '실사_실사일자',
+      '실사 설치위치': '실사_설치위치', '보고서 작성여부': '보고서_작성여부',
+      '주차장 개방여부': '주차장_개방여부', '주차장 과금여부': '주차장_과금여부',
+      '수전방식': '수전방식', '인입거리(m)': '인입거리', '단가공사 여부': '단가공사_여부',
+      '실사 진행현황': '실사진행',
+      '시설부담금': '시설부담금', '사용전검사': '사용전검사', '감리선임(매입)': '감리선임_매입',
+      '전기안전관리자': '전기안전관리자', '전기안전점검(매입)': '전기안전점검_매입',
+      '시공비(매입)': '시공비_매입', '캐노피(매입)': '캐노피_매입',
+      '설계 진행현황': '설계진행',
+      '계약일': '계약일', '계약기간': '계약기간', 'OPEN 기안여부': 'OPEN_기안여부',
+      '투심 여부': '투심_여부', 'SID': 'SID', '계약 진행현황': '계약진행',
+      '수요조사 작성': '수요조사_작성', '출하요청 기안': '출하요청_기안',
+      '출하예정일': '출하예정일', '출하여부': '출하여부',
+      '시공 과금형 수량': '시공_과금형_수량', '시공 과금형 제조사': '시공_과금형_제조사', '시공 과금형 모델명': '시공_과금형_모델명',
+      '시공 벽부 수량': '시공_벽부_수량', '시공 벽부 제조사': '시공_벽부_제조사', '시공 벽부 모델명': '시공_벽부_모델명',
+      '시공 스탠드 제조사': '시공_스탠드_제조사', '시공 스탠드 모델명': '시공_스탠드_모델명',
+      'SP(개)': 'SP', 'C(개)': 'C', 'SPC(개)': 'SPC',
+      '시공 50kW 수량': '시공_50kW_수량', '시공 50kW 제조사': '시공_50kW_제조사', '시공 50kW 모델명': '시공_50kW_모델명', '시공 50kW 캐노피': '시공_50kW_캐노피',
+      '시공 100kW 수량': '시공_100kW_수량', '시공 100kW 제조사': '시공_100kW_제조사', '시공 100kW 모델명': '시공_100kW_모델명', '시공 100kW 캐노피': '시공_100kW_캐노피',
+      '전기사용신청 접수': '전기사용신청_접수', '전기사용신청 인입방식': '전기사용신청_인입방식',
+      '전기사용신청 선택요금': '전기사용신청_선택요금', '전기사용신청 시설부담금': '전기사용신청_시설부담금',
+      '전기사용신청 납부여부': '전기사용신청_납부여부',
+      '각종검사 점검신청': '각종검사_점검신청', '각종검사 검사신청': '각종검사_검사신청',
+      '각종검사 수수료': '각종검사_수수료', '각종검사 납부여부': '각종검사_납부여부',
+      '감리선임 업체명': '감리선임_업체명', '감리선임 수수료': '감리선임_수수료', '감리선임 납부여부': '감리선임_납부여부',
+      '전기안전점검 신청': '전기안전점검_신청', '전기안전점검 수수료': '전기안전점검_수수료', '전기안전점검 납부여부': '전기안전점검_납부여부',
+      '착공 진행현황': '착공진행',
+      '시공 착공': '시공_착공', '시공 배관배선': '배관배선', '시공 분전반설치': '분전반_설치',
+      '시공 시설공사': '시설공사', '시공 주차도색': '주차도색', '시공 계량기부설': '계량기_부설',
+      '시공 사용전점검': '사용전_점검', '시공 사용전검사': '사용전_검사', '시공 전기안전점검': '전기안전_점검',
+      '시공 품질검수': '품질검수', '시공 진행현황': '시공진행',
+      '준공완료일자': '준공완료일자', '오픈일자': '오픈일자', '준공 진행현황': '준공진행',
+      '정산 승인현황': '정산진행',
+      '보조금 금액': '보조금', '보조금 신청일': '보조금_신청일', '보조금 지급일': '보조금_지급일',
+      '공사 매출(원)': '공사매출', '공사 매입(원)': '공사매입',
+      '비고': '비고',
+    };
+
+    // 숫자 필드 (import 시 Number 변환)
+    const NUMERIC_KEYS = new Set([
+      '주차면', '의무수량', '과금형', '7kW벽부', '7kW스탠드', '50kW', '100kW',
+      '인입거리', '시설부담금', '사용전검사', '감리선임_매입', '전기안전관리자',
+      '전기안전점검_매입', '시공비_매입', '캐노피_매입',
+      '시공_과금형_수량', '시공_벽부_수량', '시공_50kW_수량', '시공_50kW_캐노피',
+      '시공_100kW_수량', '시공_100kW_캐노피', 'SP', 'C', 'SPC',
+      '전기사용신청_시설부담금', '각종검사_수수료', '감리선임_수수료', '전기안전점검_수수료',
+      '영업비', '부지사용료', '보조금', '공사매출', '공사매입',
+    ]);
+
+    // Excel 내보내기
+    const exportToXlsx = (sites) => {
+      if (!sites || sites.length === 0) {
+        alert('내보낼 사이트가 없습니다');
+        return;
+      }
+      const rows = sites.map((s, idx) => {
+        const totalCh = getTotalChannels(s);
+        const totalKw = getTotalKw(s);
+        const standQty = getStandQtySi(s);
+        const totalKwSi = getTotalKwSi(s);
+        const maipSum = getMaipAutoSum(s);
+        const margin = getMargin(s);
+        const marginRate = getMarginRate(s);
+        const { progressRate } = getProgress(s);
+        return {
+          'No': idx + 1,
+          'id': s.id || '',
+          '등록일자': s.등록일자 || '',
+          '진행단계(자동)': getAutoStage(s),
+          '공정률(%)': progressRate,
+          '현장명': s.현장명 || '', '지역': s.지역 || '', '주소': s.주소 || '',
+          '건물유형': s.건물유형 || '', '투자유형': s.투자유형 || '',
+          '사업유형': Array.isArray(s.사업유형) ? s.사업유형.join(',') : (s.사업유형 || ''),
+          '공용/비공용': s.공용비공용 || '',
+          '주차면': s.주차면 ?? '', '의무수량': s.의무수량 ?? '',
+          '설치환경': s.설치환경 || '',
+          '주차 시작층': s.주차_시작층 || '', '예상 설치위치': s.예상_설치위치 || '',
+          '과금형(개)': s.과금형 ?? '', '7kW벽부(개)': s['7kW벽부'] ?? '',
+          '7kW스탠드(개)': s['7kW스탠드'] ?? '', '50kW(개)': s['50kW'] ?? '', '100kW(개)': s['100kW'] ?? '',
+          '총 채널(자동)': totalCh, '총 용량(영업/자동)': totalKw,
+          '신청자 이름': s.신청자_이름 || '', '신청자 연락처': s.신청자_연락처 || '', '신청자 메일': s.신청자_메일 || '',
+          'HEV 영업담당자': s.HEV영업담당자 || '',
+          '현장담당자 이름': s.현장담당자_이름 || '', '현장담당자 소속': s.현장담당자_소속 || '',
+          '현장담당자 연락처': s.현장담당자_연락처 || '', '현장담당자 메일': s.현장담당자_메일 || '',
+          '영업사 업체명': s.영업사_업체명 || '', '영업사 담당자': s.영업사_담당자 || '',
+          '영업사 연락처': s.영업사_연락처 || '', '영업사 메일': s.영업사_메일 || '',
+          '영업비(원)': s.영업비 ?? '', '부지사용료(원)': s.부지사용료 ?? '', '요금 정보(메모)': s.요금정보_메모 || '',
+          '영업 진행현황': s.영업진행 || '',
+          'HEV 시공담당자': s.HEV시공담당자 || '', '시공사': s.시공사 || '', '시공사 담당자': s.시공사담당자 || '',
+          '실사 요청일자': s.실사_요청일자 || '', '실사 기한일자': s.실사_기한일자 || '', '실사 실사일자': s.실사_실사일자 || '',
+          '실사 설치위치': s.실사_설치위치 || '',
+          '보고서 작성여부': s.보고서_작성여부 || '', '주차장 개방여부': s.주차장_개방여부 || '', '주차장 과금여부': s.주차장_과금여부 || '',
+          '수전방식': s.수전방식 || '', '인입거리(m)': s.인입거리 ?? '', '단가공사 여부': s.단가공사_여부 || '',
+          '실사 진행현황': s.실사진행 || '',
+          '시설부담금': s.시설부담금 ?? '', '사용전검사': s.사용전검사 ?? '', '감리선임(매입)': s.감리선임_매입 ?? '',
+          '전기안전관리자': s.전기안전관리자 ?? '', '전기안전점검(매입)': s.전기안전점검_매입 ?? '',
+          '시공비(매입)': s.시공비_매입 ?? '', '캐노피(매입)': s.캐노피_매입 ?? '',
+          '매입 자동합계': maipSum, '설계 진행현황': s.설계진행 || '',
+          '계약일': s.계약일 || '', '계약기간': s.계약기간 || '',
+          'OPEN 기안여부': s.OPEN_기안여부 || '', '투심 여부': s.투심_여부 || '', 'SID': s.SID || '',
+          '계약 진행현황': s.계약진행 || '',
+          '수요조사 작성': s.수요조사_작성 || '', '출하요청 기안': s.출하요청_기안 || '',
+          '출하예정일': s.출하예정일 || '', '출하여부': s.출하여부 || '',
+          '시공 과금형 수량': s.시공_과금형_수량 ?? '', '시공 과금형 제조사': s.시공_과금형_제조사 || '', '시공 과금형 모델명': s.시공_과금형_모델명 || '',
+          '시공 벽부 수량': s.시공_벽부_수량 ?? '', '시공 벽부 제조사': s.시공_벽부_제조사 || '', '시공 벽부 모델명': s.시공_벽부_모델명 || '',
+          '시공 스탠드 수량(자동)': standQty,
+          '시공 스탠드 제조사': s.시공_스탠드_제조사 || '', '시공 스탠드 모델명': s.시공_스탠드_모델명 || '',
+          'SP(개)': s.SP ?? '', 'C(개)': s.C ?? '', 'SPC(개)': s.SPC ?? '',
+          '시공 50kW 수량': s.시공_50kW_수량 ?? '', '시공 50kW 제조사': s.시공_50kW_제조사 || '',
+          '시공 50kW 모델명': s.시공_50kW_모델명 || '', '시공 50kW 캐노피': s.시공_50kW_캐노피 ?? '',
+          '시공 100kW 수량': s.시공_100kW_수량 ?? '', '시공 100kW 제조사': s.시공_100kW_제조사 || '',
+          '시공 100kW 모델명': s.시공_100kW_모델명 || '', '시공 100kW 캐노피': s.시공_100kW_캐노피 ?? '',
+          '총 용량(시공/자동)': totalKwSi,
+          '전기사용신청 접수': s.전기사용신청_접수 || '', '전기사용신청 인입방식': s.전기사용신청_인입방식 || '',
+          '전기사용신청 선택요금': s.전기사용신청_선택요금 || '', '전기사용신청 시설부담금': s.전기사용신청_시설부담금 ?? '',
+          '전기사용신청 납부여부': s.전기사용신청_납부여부 || '',
+          '각종검사 점검신청': s.각종검사_점검신청 || '', '각종검사 검사신청': s.각종검사_검사신청 || '',
+          '각종검사 수수료': s.각종검사_수수료 ?? '', '각종검사 납부여부': s.각종검사_납부여부 || '',
+          '감리선임 업체명': s.감리선임_업체명 || '', '감리선임 수수료': s.감리선임_수수료 ?? '', '감리선임 납부여부': s.감리선임_납부여부 || '',
+          '전기안전점검 신청': s.전기안전점검_신청 || '', '전기안전점검 수수료': s.전기안전점검_수수료 ?? '', '전기안전점검 납부여부': s.전기안전점검_납부여부 || '',
+          '착공 진행현황': s.착공진행 || '',
+          '시공 착공': s.시공_착공 || '', '시공 배관배선': s.배관배선 || '', '시공 분전반설치': s.분전반_설치 || '',
+          '시공 시설공사': s.시설공사 || '', '시공 주차도색': s.주차도색 || '', '시공 계량기부설': s.계량기_부설 || '',
+          '시공 사용전점검': s.사용전_점검 || '', '시공 사용전검사': s.사용전_검사 || '',
+          '시공 전기안전점검': s.전기안전_점검 || '', '시공 품질검수': s.품질검수 || '',
+          '시공 진행현황': s.시공진행 || '',
+          '준공완료일자': s.준공완료일자 || '', '오픈일자': s.오픈일자 || '', '준공 진행현황': s.준공진행 || '',
+          '정산 승인현황': s.정산진행 || '',
+          '보조금 금액': s.보조금 ?? '', '보조금 신청일': s.보조금_신청일 || '', '보조금 지급일': s.보조금_지급일 || '',
+          '공사 매출(원)': s.공사매출 ?? '', '공사 매입(원)': s.공사매입 ?? '',
+          '마진(자동)': margin, '마진률(자동)': marginRate ? `${(marginRate * 100).toFixed(2)}%` : '',
+          '비고': s.비고 || '',
+          'updatedAt': s.updatedAt || '',
+        };
+      });
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws['!cols'] = Array(Object.keys(rows[0]).length).fill({ wch: 15 });
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '사이트 목록');
+      const today = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `EV트래커_사이트목록_${today}.xlsx`);
+    };
+
+    // Excel 가져오기
+    const parseXlsxFile = async (file) => {
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      if (!rows.length) throw new Error('빈 파일입니다');
+      const sites = rows
+        .filter((r) => r['현장명'] && String(r['현장명']).trim())
+        .map((r) => {
+          const site = {};
+          Object.keys(r).forEach((header) => {
+            const key = HEADER_TO_KEY[header];
+            if (!key) return;
+            let value = r[header];
+            if (value === '' || value === null || value === undefined) return;
+            if (key === '사업유형') {
+              value = String(value).split(',').map((v) => v.trim()).filter(Boolean);
+            } else if (NUMERIC_KEYS.has(key)) {
+              const n = Number(value);
+              value = isNaN(n) ? 0 : n;
+            } else if (value instanceof Date) {
+              value = value.toISOString().slice(0, 10);
+            } else {
+              value = String(value);
+            }
+            site[key] = value;
+          });
+          return site;
+        });
+      return sites;
+    };
+
+    // ============================================================
     // 최상위 App (공유 모드 - 인증 없음)
     // ============================================================
     function App() {
@@ -369,11 +570,59 @@
         }
       };
 
+      // Excel 일괄 저장 (Firestore batch는 500 op 제한이라 100씩 청크)
+      const saveBatch = async (sitesToAdd) => {
+        const CHUNK = 100;
+        for (let i = 0; i < sitesToAdd.length; i += CHUNK) {
+          const chunk = sitesToAdd.slice(i, i + CHUNK);
+          const batch = db.batch();
+          chunk.forEach((s, j) => {
+            const id = s.id || `s_${Date.now()}_${Math.random().toString(36).slice(2, 5)}_${i + j}`;
+            const data = {
+              ...s,
+              id,
+              등록일자: s.등록일자 || new Date().toISOString().slice(0, 10),
+              updatedAt: new Date().toISOString(),
+            };
+            const ref = db.collection('sites').doc(id);
+            batch.set(ref, data, { merge: true });
+          });
+          await batch.commit();
+        }
+      };
+
+      const handleExport = () => {
+        try {
+          exportToXlsx(sites);
+        } catch (e) {
+          console.error('export error', e);
+          alert('내보내기 실패: ' + e.message);
+        }
+      };
+
+      const handleImport = async (file) => {
+        if (!file) return;
+        try {
+          const parsed = await parseXlsxFile(file);
+          if (parsed.length === 0) {
+            alert('가져올 수 있는 사이트가 없습니다 (현장명이 모두 비어있음)');
+            return;
+          }
+          if (!confirm(`${parsed.length}개 사이트를 가져옵니다.\n같은 ID가 있으면 기존 값과 병합됩니다. 진행할까요?`)) return;
+          await saveBatch(parsed);
+          alert(`${parsed.length}개 사이트 가져오기 완료`);
+        } catch (e) {
+          console.error('import error', e);
+          alert('가져오기 실패: ' + e.message);
+        }
+      };
+
       const selectedSite = sites.find((s) => s.id === selectedId);
 
       return (
         <div className="min-h-screen bg-stone-50">
-          <Header view={view} setView={setView} onNew={() => { setSelectedId(null); setView('editor'); }} />
+          <Header view={view} setView={setView} onNew={() => { setSelectedId(null); setView('editor'); }}
+            onExport={handleExport} onImport={handleImport} />
           <main className="max-w-7xl mx-auto px-6 py-8">
             {loading ? (
               <div className="text-center py-20 text-stone-500">불러오는 중…</div>
@@ -394,7 +643,13 @@
       );
     }
 
-    function Header({ view, setView, onNew }) {
+    function Header({ view, setView, onNew, onExport, onImport }) {
+      const fileInputRef = React.useRef(null);
+      const handleFile = (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (f) onImport(f);
+        e.target.value = ''; // 같은 파일 다시 선택 가능하게
+      };
       return (
         <header className="bg-slate-900 text-white border-b-4 border-amber-500">
           <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between flex-wrap gap-2">
@@ -405,6 +660,17 @@
             <nav className="flex items-center gap-2 flex-wrap">
               <NavButton active={view === 'list'} onClick={() => setView('list')} IconComp={Icons.LayoutGrid}>사이트</NavButton>
               <NavButton active={view === 'dashboard'} onClick={() => setView('dashboard')} IconComp={Icons.BarChart3}>대시보드</NavButton>
+              <div className="ml-2 flex items-center gap-1.5 pl-3 border-l border-white/20">
+                <button onClick={onExport} title="Excel로 내보내기"
+                  className="px-2.5 py-2 text-stone-300 hover:text-white hover:bg-white/10 rounded text-xs font-medium flex items-center gap-1 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400">
+                  <Icons.Download size={14} /> 내보내기
+                </button>
+                <button onClick={() => fileInputRef.current && fileInputRef.current.click()} title="Excel 가져오기"
+                  className="px-2.5 py-2 text-stone-300 hover:text-white hover:bg-white/10 rounded text-xs font-medium flex items-center gap-1 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400">
+                  <Icons.Upload size={14} /> 가져오기
+                </button>
+                <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFile} style={{ display: 'none' }} />
+              </div>
               <button onClick={onNew}
                 className="ml-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 text-sm font-semibold rounded transition-colors flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-amber-300">
                 <Icons.Plus size={16} /> 새 사이트
