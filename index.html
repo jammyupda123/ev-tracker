@@ -88,7 +88,7 @@
       projectId: "ev-tracker-a29b3",
       storageBucket: "ev-tracker-a29b3.firebasestorage.app",
       messagingSenderId: "62785593665",
-      appId: "1:62785593665:web:23f6d13c8231011a2441c0",
+      appId: "1:62785593665:web:23f6d13c8231011a2441c0"
     };
     // ====================================================================
 
@@ -300,6 +300,7 @@
       const [loading, setLoading] = useState(true);
       const [searchTerm, setSearchTerm] = useState('');
       const [filterStage, setFilterStage] = useState('전체');
+      const [sortBy, setSortBy] = useState('recent');
 
       useEffect(() => {
         const sitesCol = db.collection('sites');
@@ -358,6 +359,7 @@
             ) : view === 'list' ? (
               <SiteList sites={sites} searchTerm={searchTerm} setSearchTerm={setSearchTerm}
                 filterStage={filterStage} setFilterStage={setFilterStage}
+                sortBy={sortBy} setSortBy={setSortBy}
                 onEdit={(id) => { setSelectedId(id); setView('editor'); }}
                 onNew={() => { setSelectedId(null); setView('editor'); }} />
             ) : view === 'editor' ? (
@@ -403,22 +405,32 @@
       );
     }
 
-    function SiteList({ sites, searchTerm, setSearchTerm, filterStage, setFilterStage, onEdit, onNew }) {
+    function SiteList({ sites, searchTerm, setSearchTerm, filterStage, setFilterStage, sortBy, setSortBy, onEdit, onNew }) {
       const filtered = useMemo(() => {
         const term = searchTerm.toLowerCase();
-        return sites
-          .map((s) => ({ ...s, _stage: getAutoStage(s) }))
-          .filter((s) => {
-            if (filterStage !== '전체' && s._stage !== filterStage) return false;
-            if (!term) return true;
-            return (
-              (s.현장명 || '').toLowerCase().includes(term) ||
-              (s.지역 || '').includes(term) ||
-              (s.주소 || '').includes(term)
-            );
-          })
-          .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
-      }, [sites, searchTerm, filterStage]);
+        const enriched = sites.map((s) => ({
+          ...s,
+          _stage: getAutoStage(s),
+          _progressRate: getProgress(s).progressRate,
+        }));
+        const result = enriched.filter((s) => {
+          if (filterStage !== '전체' && s._stage !== filterStage) return false;
+          if (!term) return true;
+          return (
+            (s.현장명 || '').toLowerCase().includes(term) ||
+            (s.지역 || '').includes(term) ||
+            (s.주소 || '').includes(term)
+          );
+        });
+        if (sortBy === 'progressLow') {
+          result.sort((a, b) => a._progressRate - b._progressRate);
+        } else if (sortBy === 'progressHigh') {
+          result.sort((a, b) => b._progressRate - a._progressRate);
+        } else {
+          result.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+        }
+        return result;
+      }, [sites, searchTerm, filterStage, sortBy]);
 
       return (
         <div>
@@ -445,6 +457,15 @@
                 className="px-3 py-2 bg-white border border-stone-300 rounded text-sm focus:outline-none focus:border-slate-800">
                 <option>전체</option>
                 {STAGES.map((s) => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-stone-500">정렬</span>
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}
+                className="px-3 py-2 bg-white border border-stone-300 rounded text-sm focus:outline-none focus:border-slate-800">
+                <option value="recent">최근 수정순</option>
+                <option value="progressLow">공정률 낮은 순</option>
+                <option value="progressHigh">공정률 높은 순</option>
               </select>
             </div>
           </div>
