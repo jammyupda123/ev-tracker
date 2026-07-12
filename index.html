@@ -809,6 +809,11 @@
       return (
         <button onClick={onClick}
           className="bg-white border border-stone-200 rounded-lg p-5 text-left hover:border-slate-800 hover:shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-slate-800 focus:ring-offset-2">
+          <div className="flex items-center gap-3 mb-2 text-[11px] text-stone-500">
+            <span className="truncate">영업 <span className="font-medium text-stone-700">{site.HEV영업담당자 || '미배정'}</span></span>
+            <span className="text-stone-300">|</span>
+            <span className="truncate">시공 <span className="font-medium text-stone-700">{site.시공사 || '미배정'}</span></span>
+          </div>
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-stone-900 truncate">{site.현장명 || '(이름 없음)'}</h3>
