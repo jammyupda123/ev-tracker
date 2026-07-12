@@ -152,6 +152,7 @@
       시공진행: ['', '공사중', '공사완료', '보류'],
       준공진행: ['', '미제출', '제출', '완료'],
       정산진행: ['', '미승인', '승인진행', '승인완료'],
+      시공사: ['', '인엠스', '브리츠테크놀로지', 'EVCP', '이모션플레이스', '기타'],
     };
 
     const KW_RATED = { 과금형: 3, '7kW벽부': 7, '7kW스탠드': 7, '50kW': 53, '100kW': 105 };
@@ -1126,7 +1127,7 @@
           <FormSection title="실사 담당자">
             <Field label="HEV 시공 담당자"><TextInput value={draft.HEV시공담당자} onChange={(v) => update('HEV시공담당자', v)} /></Field>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="시공사 (= 실사업체)"><TextInput value={draft.시공사} onChange={(v) => update('시공사', v)} /></Field>
+              <Field label="시공사 (= 실사업체)"><Select value={draft.시공사} onChange={(v) => update('시공사', v)} options={ENUMS.시공사} /></Field>
               <Field label="시공사 담당자"><TextInput value={draft.시공사담당자} onChange={(v) => update('시공사담당자', v)} /></Field>
             </div>
           </FormSection>
@@ -1479,6 +1480,18 @@
         const byInvestment = groupByDim(enriched, '투자유형');
         const byBuilding = groupByDim(enriched, '건물유형').slice(0, 8);
 
+        // 시공사별 물량
+        const byConstructor = (() => {
+          const map = {};
+          enriched.forEach((s) => {
+            const name = (s.시공사 && String(s.시공사).trim()) || '미배정';
+            if (!map[name]) map[name] = { name, count: 0 };
+            map[name].count++;
+            CHARGER_TYPES.forEach((t) => { map[name][t] = (map[name][t] || 0) + Number(s[t] || 0); });
+          });
+          return Object.values(map).sort((a, b) => b.count - a.count);
+        })();
+
         // 시계열
         const timeline = buildTimeline(
           groupByMonth(enriched, '등록일자'),
@@ -1488,7 +1501,7 @@
 
         return {
           total, active, done, totalChannels, totalKw, totalSubsidy, avgMarginRate, avgProgressRate, problemCount,
-          stageDistribution, chargerSums, byRegion, byInvestment, byBuilding, timeline,
+          stageDistribution, chargerSums, byRegion, byInvestment, byBuilding, byConstructor, timeline,
         };
       }, [sites]);
 
@@ -1606,6 +1619,75 @@
                   )}
                 </ChartCard>
               </div>
+
+              {/* 시공사별 물량 */}
+              <SectionTitle>시공사별 물량</SectionTitle>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <ChartCard title="시공사별 개소 수">
+                  {stats.byConstructor.length === 0 ? <EmptyChart /> : (
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={stats.byConstructor} layout="vertical" margin={{ top: 10, right: 10, left: 30, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E0" />
+                        <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: '#57534E' }} />
+                        <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#57534E' }} width={110} />
+                        <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E5E0', borderRadius: 4, fontSize: 12 }} cursor={{ fill: '#F5F5F4' }} />
+                        <Bar dataKey="count" fill="#334155" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </ChartCard>
+
+                <ChartCard title="시공사별 충전기 수량">
+                  {stats.byConstructor.length === 0 ? <EmptyChart /> : (
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={stats.byConstructor} layout="vertical" margin={{ top: 10, right: 10, left: 30, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E0" />
+                        <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: '#57534E' }} />
+                        <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#57534E' }} width={110} />
+                        <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E5E0', borderRadius: 4, fontSize: 12 }} cursor={{ fill: '#F5F5F4' }} />
+                        <Legend wrapperStyle={{ fontSize: 11 }} />
+                        <Bar dataKey="과금형" stackId="a" fill="#1E293B" />
+                        <Bar dataKey="7kW벽부" stackId="a" fill="#475569" />
+                        <Bar dataKey="7kW스탠드" stackId="a" fill="#64748B" />
+                        <Bar dataKey="50kW" stackId="a" fill="#0EA5E9" />
+                        <Bar dataKey="100kW" stackId="a" fill="#F59E0B" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </ChartCard>
+              </div>
+
+              {stats.byConstructor.length > 0 && (
+                <div className="bg-white border border-stone-200 rounded-lg p-5 mb-8 overflow-x-auto">
+                  <h3 className="text-sm font-semibold text-stone-700 mb-4">시공사별 물량 상세</h3>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-stone-200 text-left">
+                        <th className="py-2 pr-4 font-semibold text-stone-600">시공사</th>
+                        <th className="py-2 pr-4 font-semibold text-stone-600 text-right">개소</th>
+                        {CHARGER_TYPES.map((t) => <th key={t} className="py-2 pr-4 font-semibold text-stone-600 text-right">{t}</th>)}
+                        <th className="py-2 pr-4 font-semibold text-stone-600 text-right">총 용량(kW)</th>
+                        <th className="py-2 font-semibold text-stone-600 text-right">총 채널</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.byConstructor.map((row) => {
+                        const kw = CHARGER_TYPES.reduce((s, t) => s + (row[t] || 0) * KW_RATED[t], 0);
+                        const ch = CHARGER_TYPES.reduce((s, t) => s + (row[t] || 0) * (t === '100kW' ? 2 : 1), 0);
+                        return (
+                          <tr key={row.name} className="border-b border-stone-100 hover:bg-stone-50">
+                            <td className="py-2 pr-4 font-medium text-stone-800">{row.name}</td>
+                            <td className="py-2 pr-4 text-right num-mono">{row.count}</td>
+                            {CHARGER_TYPES.map((t) => <td key={t} className="py-2 pr-4 text-right num-mono">{row[t] || 0}</td>)}
+                            <td className="py-2 pr-4 text-right num-mono">{kw.toLocaleString()}</td>
+                            <td className="py-2 text-right num-mono">{ch}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
               {/* 시계열 */}
               <SectionTitle>월별 추이</SectionTitle>
