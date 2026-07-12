@@ -1398,15 +1398,16 @@
           </FormSection>
 
           <FormSection title="투자비 정리 (VAT 제외)">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Field label="공사 매출 (원)"><NumInput value={draft.공사매출} onChange={(v) => update('공사매출', v)} /></Field>
               <AutoBox label="매입 자동 합계 (원)" value={autoSum.toLocaleString()} unit="원" />
+              <AutoBox label="공사매입비 (원) — 시공사 지급액" value={Number(draft.시공비_매입 || 0).toLocaleString()} unit="원" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <AutoBox label="마진 (공사매출 − 매입자동합계)" value={margin ? margin.toLocaleString() : '—'} unit="원" color={margin >= 0 ? 'text-emerald-700' : 'text-red-600'} />
               <AutoBox label="마진률" value={marginRate ? `${(marginRate * 100).toFixed(1)}%` : '—'} color={marginRate >= 0 ? 'text-emerald-700' : 'text-red-600'} />
             </div>
-            <p className="text-xs text-stone-500">마진 = 공사 매출 − 매입 자동 합계. 매입 자동 합계 = 설계/견적 매입 8개 항목 + 영업비 + 부지사용료.</p>
+            <p className="text-xs text-stone-500">마진 = 공사 매출 − 매입 자동 합계. 공사매입비는 설계/견적 시공비에서 자동 연동 (시공사 정산 지급 대상).</p>
           </FormSection>
         </div>
       );
