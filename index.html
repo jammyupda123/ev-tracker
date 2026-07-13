@@ -10099,6 +10099,7 @@ function App(){
     setTimeout(()=>{ window.print(); setTimeout(()=>setPrintAll(false),600); },200);
   }
   const [sbFilter,setSbFilter]=useState({ctype:'전체',region:'전체'});
+  const [sbSearch,setSbSearch]=useState('');
   const [deleteMode,setDeleteMode]=useState(false);
   const [checkedIds,setCheckedIds]=useState([]);
 
@@ -10177,7 +10178,8 @@ function App(){
   const filteredSites=sites.filter(s=>{
     const ctMatch=sbFilter.ctype==='전체'||(sbFilter.ctype==='신규'?(simMap[s.id]?.contractType==='new'):(simMap[s.id]?.contractType!=='new'));
     const rgMatch=sbFilter.region==='전체'||s.region===sbFilter.region;
-    return ctMatch&&rgMatch;
+    const searchMatch=!sbSearch||s.name.toLowerCase().includes(sbSearch.toLowerCase())||(s.location||'').toLowerCase().includes(sbSearch.toLowerCase())||(s.region||'').toLowerCase().includes(sbSearch.toLowerCase());
+    return ctMatch&&rgMatch&&searchMatch;
   });
 
   return <>
@@ -10263,6 +10265,14 @@ function App(){
             <option value="전체">전체 지역</option>
             {REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
           </select>
+        </div>
+        <div style={{padding:'0 8px 6px'}}>
+          <div style={{position:'relative'}}>
+            <input placeholder="🔍 현장명 검색" value={sbSearch} onChange={e=>setSbSearch(e.target.value)}
+              style={{width:'100%',padding:'5px 28px 5px 8px',fontSize:10,border:'1px solid var(--bd)',borderRadius:5,background:'var(--s2)',color:'var(--ink)',fontFamily:'inherit',outline:'none',boxSizing:'border-box'}}/>
+            {sbSearch&&<button onClick={()=>setSbSearch('')}
+              style={{position:'absolute',right:4,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:12,color:'var(--ink3)',padding:'0 2px',lineHeight:1,fontFamily:'inherit'}}>×</button>}
+          </div>
         </div>
         <div className="sb-list">{filteredSites.map(s=>{
           const sIsNew=simMap[s.id]?.contractType==='new';
