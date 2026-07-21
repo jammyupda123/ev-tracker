@@ -1025,7 +1025,7 @@
     // 공통 헬퍼 컴포넌트
     const FormSection = ({ title, children }) => (
       <div>
-        <h3 className="text-xs font-bold text-stone-700 uppercase tracking-wider mb-3 pb-2 border-b border-stone-200">{title}</h3>
+        <h3 className="text-sm font-bold text-slate-800 mb-3 pb-2 border-b-2 border-slate-300 flex items-center gap-2"><span className="inline-block w-1 h-4 bg-slate-700 rounded-sm"></span>{title}</h3>
         <div className="space-y-4">{children}</div>
       </div>
     );
@@ -1296,7 +1296,7 @@
               <Field label="접수 여부"><TextInput value={draft.전기사용신청_접수} onChange={(v) => update('전기사용신청_접수', v)} /></Field>
               <Field label="인입 방식"><TextInput value={draft.전기사용신청_인입방식} onChange={(v) => update('전기사용신청_인입방식', v)} /></Field>
               <Field label="선택 요금"><TextInput value={draft.전기사용신청_선택요금} onChange={(v) => update('전기사용신청_선택요금', v)} /></Field>
-              <Field label="시설부담금"><NumInput value={draft.전기사용신청_시설부담금} onChange={(v) => update('전기사용신청_시설부담금', v)} /></Field>
+              <Field label="시설부담금"><AutoBox label="" value={Number(draft.시설부담금 || 0).toLocaleString()} unit="원 (설계/견적 연동)" /></Field>
               <Field label="납부여부"><TextInput value={draft.전기사용신청_납부여부} onChange={(v) => update('전기사용신청_납부여부', v)} /></Field>
             </div>
           </FormSection>
@@ -1317,7 +1317,7 @@
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Field label="점검 신청"><TextInput value={draft.각종검사_점검신청} onChange={(v) => update('각종검사_점검신청', v)} /></Field>
               <Field label="검사 신청"><TextInput value={draft.각종검사_검사신청} onChange={(v) => update('각종검사_검사신청', v)} /></Field>
-              <Field label="수수료"><NumInput value={draft.각종검사_수수료} onChange={(v) => update('각종검사_수수료', v)} /></Field>
+              <Field label="수수료"><AutoBox label="" value={Number(draft.사용전검사 || 0).toLocaleString()} unit="원 (설계/견적 연동)" /></Field>
               <Field label="납부여부"><TextInput value={draft.각종검사_납부여부} onChange={(v) => update('각종검사_납부여부', v)} /></Field>
             </div>
           </FormSection>
@@ -1325,7 +1325,7 @@
           <FormSection title="감리선임">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Field label="업체명"><TextInput value={draft.감리선임_업체명} onChange={(v) => update('감리선임_업체명', v)} /></Field>
-              <Field label="수수료"><NumInput value={draft.감리선임_수수료} onChange={(v) => update('감리선임_수수료', v)} /></Field>
+              <Field label="수수료"><AutoBox label="" value={Number(draft.감리선임_매입 || 0).toLocaleString()} unit="원 (설계/견적 연동)" /></Field>
               <Field label="납부여부"><TextInput value={draft.감리선임_납부여부} onChange={(v) => update('감리선임_납부여부', v)} /></Field>
             </div>
           </FormSection>
@@ -1333,7 +1333,7 @@
           <FormSection title="전기안전점검">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Field label="신청"><TextInput value={draft.전기안전점검_신청} onChange={(v) => update('전기안전점검_신청', v)} /></Field>
-              <Field label="수수료"><NumInput value={draft.전기안전점검_수수료} onChange={(v) => update('전기안전점검_수수료', v)} /></Field>
+              <Field label="수수료"><AutoBox label="" value={Number(draft.전기안전점검_매입 || 0).toLocaleString()} unit="원 (설계/견적 연동)" /></Field>
               <Field label="납부여부"><TextInput value={draft.전기안전점검_납부여부} onChange={(v) => update('전기안전점검_납부여부', v)} /></Field>
             </div>
           </FormSection>
