@@ -134,7 +134,7 @@
     // ============================================================
     // 상수 및 enum 정의
     // ============================================================
-    const STAGES = ['영업', '현장실사', '설계/견적', '계약', '착공', '시공', '준공', '정산'];
+    const STAGES = ['영업', '현장실사', '설계/견적', '계약', '출하', '시공', '준공', '정산'];
 
     const ENUMS = {
       투자유형: ['자체투자', '26환경부(완속)', '기타'],
@@ -148,8 +148,8 @@
       실사진행: ['', '일정조율', '보류', '취소', '완료'],
       설계진행: ['', '설계/견적', '보류', '취소', '완료'],
       계약진행: ['', '계약검토', '제안', '계약진행', '계약완료', '보류', '취소'],
-      착공진행: ['', '서류접수', '서류완료', '일정조율', '보류', '취소', '착공완료'],
-      시공진행: ['', '공사중', '공사완료', '보류'],
+      시공진행: ['', '서류접수', '서류완료', '일정조율', '보류', '취소', '착공완료', '공사완료'],
+      출하진행: ['', '진행중', '완료'],
       준공진행: ['', '미제출', '제출', '완료'],
       정산진행: ['', '미승인', '승인진행', '승인완료'],
       시공사: ['', '인엠스', '브리츠테크놀로지', 'EVCP', '이모션플레이스', '기타'],
@@ -167,7 +167,7 @@
       { key: '실사진행', label: '실사' },
       { key: '설계진행', label: '설계/견적' },
       { key: '계약진행', label: '계약' },
-      { key: '착공진행', label: '착공' },
+      { key: '출하진행', label: '출하' },
       { key: '시공진행', label: '시공' },
       { key: '준공진행', label: '준공' },
       { key: '정산진행', label: '정산' },
@@ -250,7 +250,7 @@
       '현장실사': 'bg-green-100 text-green-800 border-green-200',
       '설계/견적': 'bg-yellow-100 text-yellow-800 border-yellow-200',
       '계약': 'bg-orange-100 text-orange-800 border-orange-200',
-      '착공': 'bg-purple-100 text-purple-800 border-purple-200',
+      '출하': 'bg-purple-100 text-purple-800 border-purple-200',
       '시공': 'bg-red-100 text-red-800 border-red-200',
       '준공': 'bg-cyan-100 text-cyan-800 border-cyan-200',
       '정산': 'bg-emerald-100 text-emerald-800 border-emerald-200',
@@ -263,7 +263,7 @@
       if (s.정산진행) return '정산';
       if (s.준공진행) return '준공';
       if (s.시공진행) return '시공';
-      if (s.착공진행) return '착공';
+      if (s.출하진행) return '출하';
       if (s.계약진행) return '계약';
       if (s.설계진행) return '설계/견적';
       if (s.실사진행) return '현장실사';
@@ -362,7 +362,7 @@
       '각종검사 수수료': '각종검사_수수료', '각종검사 납부여부': '각종검사_납부여부',
       '감리선임 업체명': '감리선임_업체명', '감리선임 수수료': '감리선임_수수료', '감리선임 납부여부': '감리선임_납부여부',
       '전기안전점검 신청': '전기안전점검_신청', '전기안전점검 수수료': '전기안전점검_수수료', '전기안전점검 납부여부': '전기안전점검_납부여부',
-      '착공 진행현황': '착공진행',
+      '착공 진행현황': '출하진행',
       '시공 착공': '시공_착공', '시공 배관배선': '배관배선', '시공 분전반설치': '분전반_설치',
       '시공 시설공사': '시설공사', '시공 주차도색': '주차도색', '시공 계량기부설': '계량기_부설',
       '시공 사용전점검': '사용전_점검', '시공 사용전검사': '사용전_검사', '시공 전기안전점검': '전기안전_점검',
@@ -457,7 +457,7 @@
           '각종검사 수수료': s.각종검사_수수료 ?? '', '각종검사 납부여부': s.각종검사_납부여부 || '',
           '감리선임 업체명': s.감리선임_업체명 || '', '감리선임 수수료': s.감리선임_수수료 ?? '', '감리선임 납부여부': s.감리선임_납부여부 || '',
           '전기안전점검 신청': s.전기안전점검_신청 || '', '전기안전점검 수수료': s.전기안전점검_수수료 ?? '', '전기안전점검 납부여부': s.전기안전점검_납부여부 || '',
-          '착공 진행현황': s.착공진행 || '',
+          '착공 진행현황': s.출하진행 || '',
           '시공 착공': s.시공_착공 || '', '시공 배관배선': s.배관배선 || '', '시공 분전반설치': s.분전반_설치 || '',
           '시공 시설공사': s.시설공사 || '', '시공 주차도색': s.주차도색 || '', '시공 계량기부설': s.계량기_부설 || '',
           '시공 사용전점검': s.사용전_점검 || '', '시공 사용전검사': s.사용전_검사 || '',
@@ -894,7 +894,7 @@
         }
       };
 
-      const tabs = ['영업', '현장실사', '설계/견적', '계약', '착공', '시공', '준공', '정산', '비고'];
+      const tabs = ['영업', '현장실사', '설계/견적', '계약', '출하', '시공', '준공', '정산', '비고'];
 
       return (
         <div>
@@ -962,7 +962,7 @@
               {activeTab === '현장실사' && <현장실사Form draft={draft} update={update} />}
               {activeTab === '설계/견적' && <설계견적Form draft={draft} update={update} />}
               {activeTab === '계약' && <계약Form draft={draft} update={update} />}
-              {activeTab === '착공' && <착공Form draft={draft} update={update} />}
+              {activeTab === '출하' && <출하Form draft={draft} update={update} />}
               {activeTab === '시공' && <시공Form draft={draft} update={update} />}
               {activeTab === '준공' && <준공Form draft={draft} update={update} />}
               {activeTab === '정산' && <정산Form draft={draft} update={update} />}
@@ -1224,9 +1224,9 @@
     }
 
     // ============================================================
-    // 착공 탭 (41개)
+    // 출하 탭 (출하 + 제품/상품정보)
     // ============================================================
-    function 착공Form({ draft, update }) {
+    function 출하Form({ draft, update }) {
       const standQty = getStandQtySi(draft);
       const totalKwSi = getTotalKwSi(draft);
       return (
@@ -1291,6 +1291,19 @@
             <AutoBox label="시공단 총 용량" value={totalKwSi || '—'} unit="kW" />
           </FormSection>
 
+          <FormSection title="출하 진행현황">
+            <Field label="진행현황"><Select value={draft.출하진행} onChange={(v) => update('출하진행', v)} options={ENUMS.출하진행} /></Field>
+          </FormSection>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 시공 탭 (착공 잔여 + 시공 합침)
+    // ============================================================
+    function 시공Form({ draft, update }) {
+      return (
+        <div className="space-y-6">
           <FormSection title="전기사용신청">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Field label="접수 여부"><TextInput value={draft.전기사용신청_접수} onChange={(v) => update('전기사용신청_접수', v)} /></Field>
@@ -1298,6 +1311,7 @@
               <Field label="선택 요금"><TextInput value={draft.전기사용신청_선택요금} onChange={(v) => update('전기사용신청_선택요금', v)} /></Field>
               <Field label="시설부담금"><AutoBox label="" value={Number(draft.시설부담금 || 0).toLocaleString()} unit="원 (설계/견적 연동)" /></Field>
               <Field label="납부여부"><TextInput value={draft.전기사용신청_납부여부} onChange={(v) => update('전기사용신청_납부여부', v)} /></Field>
+              <Field label="계량기 부설"><TextInput value={draft.계량기_부설} onChange={(v) => update('계량기_부설', v)} placeholder="예: 완료 / 진행 중 / 일자 등" /></Field>
             </div>
           </FormSection>
 
@@ -1319,6 +1333,17 @@
               <Field label="검사 신청"><TextInput value={draft.각종검사_검사신청} onChange={(v) => update('각종검사_검사신청', v)} /></Field>
               <Field label="수수료"><AutoBox label="" value={Number(draft.사용전검사 || 0).toLocaleString()} unit="원 (설계/견적 연동)" /></Field>
               <Field label="납부여부"><TextInput value={draft.각종검사_납부여부} onChange={(v) => update('각종검사_납부여부', v)} /></Field>
+              <Field label="사용전 점검"><TextInput value={draft.사용전_점검} onChange={(v) => update('사용전_점검', v)} placeholder="예: 완료 / 진행 중 / 일자 등" /></Field>
+              <Field label="사용전 검사"><TextInput value={draft.사용전_검사} onChange={(v) => update('사용전_검사', v)} placeholder="예: 완료 / 진행 중 / 일자 등" /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="전기안전점검">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Field label="신청"><TextInput value={draft.전기안전점검_신청} onChange={(v) => update('전기안전점검_신청', v)} /></Field>
+              <Field label="수수료"><AutoBox label="" value={Number(draft.전기안전점검_매입 || 0).toLocaleString()} unit="원 (설계/견적 연동)" /></Field>
+              <Field label="납부여부"><TextInput value={draft.전기안전점검_납부여부} onChange={(v) => update('전기안전점검_납부여부', v)} /></Field>
+              <Field label="전기안전 점검"><TextInput value={draft.전기안전_점검} onChange={(v) => update('전기안전_점검', v)} placeholder="예: 완료 / 진행 중 / 일자 등" /></Field>
             </div>
           </FormSection>
 
@@ -1330,44 +1355,9 @@
             </div>
           </FormSection>
 
-          <FormSection title="전기안전점검">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Field label="신청"><TextInput value={draft.전기안전점검_신청} onChange={(v) => update('전기안전점검_신청', v)} /></Field>
-              <Field label="수수료"><AutoBox label="" value={Number(draft.전기안전점검_매입 || 0).toLocaleString()} unit="원 (설계/견적 연동)" /></Field>
-              <Field label="납부여부"><TextInput value={draft.전기안전점검_납부여부} onChange={(v) => update('전기안전점검_납부여부', v)} /></Field>
-            </div>
-          </FormSection>
-
-          <FormSection title="착공 진행현황">
-            <Field label="진행현황"><Select value={draft.착공진행} onChange={(v) => update('착공진행', v)} options={ENUMS.착공진행} /></Field>
-          </FormSection>
-        </div>
-      );
-    }
-
-    // ============================================================
-    // 시공 탭 (11개)
-    // ============================================================
-    function 시공Form({ draft, update }) {
-      const steps = [
-        ['시공_착공', '착공'],
-        ['배관배선', '배관/배선'],
-        ['분전반_설치', '분전반 설치'],
-        ['시설공사', '시설공사 (기초/볼라드 등)'],
-        ['주차도색', '주차도색'],
-        ['계량기_부설', '계량기 부설'],
-        ['사용전_점검', '사용전 점검'],
-        ['사용전_검사', '사용전 검사'],
-        ['전기안전_점검', '전기안전 점검'],
-        ['품질검수', '품질검수 (시운전 TEST 포함)'],
-      ];
-      return (
-        <div className="space-y-6">
-          <FormSection title="사업추진 현황">
+          <FormSection title="품질검수">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {steps.map(([key, label]) => (
-                <Field key={key} label={label}><TextInput value={draft[key]} onChange={(v) => update(key, v)} placeholder="예: 완료 / 진행 중 / 일자 등" /></Field>
-              ))}
+              <Field label="품질검수 (시운전 TEST 포함)"><TextInput value={draft.품질검수} onChange={(v) => update('품질검수', v)} placeholder="예: 완료 / 진행 중 / 일자 등" /></Field>
             </div>
           </FormSection>
 
