@@ -358,10 +358,11 @@
       '전기사용신청 선택요금': '전기사용신청_선택요금', '전기사용신청 시설부담금': '전기사용신청_시설부담금',
       '전기사용신청 납부여부': '전기사용신청_납부여부',
       '지자체 신고여부': '지자체_신고여부', '의무보험 가입여부': '의무보험_가입여부',
-      '각종검사 점검신청': '각종검사_점검신청', '각종검사 검사신청': '각종검사_검사신청',
-      '각종검사 수수료': '각종검사_수수료', '각종검사 납부여부': '각종검사_납부여부',
+      '사용전점검 신청여부': '사용전점검_신청여부', '사용전점검 예정일': '사용전점검_예정일',
+      '사용전검사 신청여부': '사용전검사_신청여부', '각종검사 납부여부': '각종검사_납부여부', '사용전검사 예정일': '사용전검사_예정일',
       '감리선임 업체명': '감리선임_업체명', '감리선임 수수료': '감리선임_수수료', '감리선임 납부여부': '감리선임_납부여부',
-      '전기안전점검 신청': '전기안전점검_신청', '전기안전점검 수수료': '전기안전점검_수수료', '전기안전점검 납부여부': '전기안전점검_납부여부',
+      '전기안전점검 신청': '전기안전점검_신청', '전기안전점검 수수료': '전기안전점검_수수료', '전기안전점검 납부여부': '전기안전점검_납부여부', '전기안전점검 예정일': '전기안전점검_예정일',
+      '사용검사 신청여부': '사용검사_신청여부', '사용검사 예정일': '사용검사_예정일',
       '착공 진행현황': '출하진행',
       '시공 착공': '시공_착공', '시공 배관배선': '배관배선', '시공 분전반설치': '분전반_설치',
       '시공 시설공사': '시설공사', '시공 주차도색': '주차도색', '시공 계량기부설': '계량기_부설',
@@ -454,14 +455,13 @@
           '전기사용신청 납부여부': s.전기사용신청_납부여부 || '',
           '지자체 신고여부': s.지자체_신고여부 || '', '의무보험 가입여부': s.의무보험_가입여부 || '',
           '각종검사 점검신청': s.각종검사_점검신청 || '', '각종검사 검사신청': s.각종검사_검사신청 || '',
-          '각종검사 수수료': s.각종검사_수수료 ?? '', '각종검사 납부여부': s.각종검사_납부여부 || '',
-          '감리선임 업체명': s.감리선임_업체명 || '', '감리선임 수수료': s.감리선임_수수료 ?? '', '감리선임 납부여부': s.감리선임_납부여부 || '',
-          '전기안전점검 신청': s.전기안전점검_신청 || '', '전기안전점검 수수료': s.전기안전점검_수수료 ?? '', '전기안전점검 납부여부': s.전기안전점검_납부여부 || '',
+          '사용전점검 신청여부': s.사용전점검_신청여부 || '', '사용전점검 예정일': s.사용전점검_예정일 || '',
+          '사용전검사 신청여부': s.사용전검사_신청여부 || '', '사용전검사 수수료': s.사용전검사 ?? '', '각종검사 납부여부': s.각종검사_납부여부 || '', '사용전검사 예정일': s.사용전검사_예정일 || '',
+          '전기안전점검 신청': s.전기안전점검_신청 || '', '전기안전점검 수수료': s.전기안전점검_매입 ?? '', '전기안전점검 납부여부': s.전기안전점검_납부여부 || '', '전기안전점검 예정일': s.전기안전점검_예정일 || '',
+          '사용검사 신청여부': s.사용검사_신청여부 || '', '사용검사 예정일': s.사용검사_예정일 || '',
+          '감리선임 업체명': s.감리선임_업체명 || '', '감리선임 수수료': s.감리선임_매입 ?? '', '감리선임 납부여부': s.감리선임_납부여부 || '',
           '착공 진행현황': s.출하진행 || '',
-          '시공 착공': s.시공_착공 || '', '시공 배관배선': s.배관배선 || '', '시공 분전반설치': s.분전반_설치 || '',
-          '시공 시설공사': s.시설공사 || '', '시공 주차도색': s.주차도색 || '', '시공 계량기부설': s.계량기_부설 || '',
-          '시공 사용전점검': s.사용전_점검 || '', '시공 사용전검사': s.사용전_검사 || '',
-          '시공 전기안전점검': s.전기안전_점검 || '', '시공 품질검수': s.품질검수 || '',
+          '시공 계량기부설': s.계량기_부설 || '', '시공 품질검수': s.품질검수 || '',
           '시공 진행현황': s.시공진행 || '',
           '준공완료일자': s.준공완료일자 || '', '오픈일자': s.오픈일자 || '', '준공 진행현황': s.준공진행 || '',
           '정산 승인현황': s.정산진행 || '',
@@ -1327,23 +1327,33 @@
             </div>
           </FormSection>
 
-          <FormSection title="각종검사">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Field label="점검 신청"><TextInput value={draft.각종검사_점검신청} onChange={(v) => update('각종검사_점검신청', v)} /></Field>
-              <Field label="검사 신청"><TextInput value={draft.각종검사_검사신청} onChange={(v) => update('각종검사_검사신청', v)} /></Field>
+          <FormSection title="검사 &amp; 점검">
+            <h4 className="text-xs font-semibold text-stone-500 mt-1 mb-2">사용전 점검</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+              <Field label="신청여부"><TextInput value={draft.사용전점검_신청여부} onChange={(v) => update('사용전점검_신청여부', v)} /></Field>
+              <Field label="사용전점검 예정일"><TextInput type="date" value={draft.사용전점검_예정일} onChange={(v) => update('사용전점검_예정일', v)} /></Field>
+            </div>
+
+            <h4 className="text-xs font-semibold text-stone-500 mb-2">사용전 검사</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+              <Field label="신청여부"><TextInput value={draft.사용전검사_신청여부} onChange={(v) => update('사용전검사_신청여부', v)} /></Field>
               <Field label="수수료"><AutoBox label="" value={Number(draft.사용전검사 || 0).toLocaleString()} unit="원 (설계/견적 연동)" /></Field>
               <Field label="납부여부"><TextInput value={draft.각종검사_납부여부} onChange={(v) => update('각종검사_납부여부', v)} /></Field>
-              <Field label="사용전 점검"><TextInput value={draft.사용전_점검} onChange={(v) => update('사용전_점검', v)} placeholder="예: 완료 / 진행 중 / 일자 등" /></Field>
-              <Field label="사용전 검사"><TextInput value={draft.사용전_검사} onChange={(v) => update('사용전_검사', v)} placeholder="예: 완료 / 진행 중 / 일자 등" /></Field>
+              <Field label="사용전검사 예정일"><TextInput type="date" value={draft.사용전검사_예정일} onChange={(v) => update('사용전검사_예정일', v)} /></Field>
             </div>
-          </FormSection>
 
-          <FormSection title="전기안전점검">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <h4 className="text-xs font-semibold text-stone-500 mb-2">전기안전점검</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
               <Field label="신청"><TextInput value={draft.전기안전점검_신청} onChange={(v) => update('전기안전점검_신청', v)} /></Field>
               <Field label="수수료"><AutoBox label="" value={Number(draft.전기안전점검_매입 || 0).toLocaleString()} unit="원 (설계/견적 연동)" /></Field>
               <Field label="납부여부"><TextInput value={draft.전기안전점검_납부여부} onChange={(v) => update('전기안전점검_납부여부', v)} /></Field>
-              <Field label="전기안전 점검"><TextInput value={draft.전기안전_점검} onChange={(v) => update('전기안전_점검', v)} placeholder="예: 완료 / 진행 중 / 일자 등" /></Field>
+              <Field label="전기안전점검 예정일"><TextInput type="date" value={draft.전기안전점검_예정일} onChange={(v) => update('전기안전점검_예정일', v)} /></Field>
+            </div>
+
+            <h4 className="text-xs font-semibold text-stone-500 mb-2">사용검사</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Field label="신청여부"><TextInput value={draft.사용검사_신청여부} onChange={(v) => update('사용검사_신청여부', v)} /></Field>
+              <Field label="사용검사 예정일"><TextInput type="date" value={draft.사용검사_예정일} onChange={(v) => update('사용검사_예정일', v)} /></Field>
             </div>
           </FormSection>
 
@@ -1495,14 +1505,19 @@
         const byInvestment = groupByDim(enriched, '투자유형');
         const byBuilding = groupByDim(enriched, '건물유형').slice(0, 8);
 
-        // 시공사별 물량 (미준공/준공 소계 포함)
+        // 시공사별 물량 (취소/보류/진행중/준공 소계 포함)
         const byConstructor = (() => {
+          const emptySub = () => ({ count: 0, 매입합계: 0 });
           const map = {};
+          const progressKeys = ['영업진행', '실사진행', '설계진행', '계약진행', '출하진행', '시공진행', '준공진행', '정산진행'];
           enriched.forEach((s) => {
             const name = (s.시공사 && String(s.시공사).trim()) || '미배정';
-            if (!map[name]) map[name] = { name, count: 0, 매입합계: 0, 미준공: { count: 0, 매입합계: 0 }, 준공: { count: 0, 매입합계: 0 } };
+            if (!map[name]) map[name] = { name, count: 0, 매입합계: 0, 취소: emptySub(), 보류: emptySub(), 진행중: emptySub(), 준공: emptySub() };
             const isDone = s._stage === '준공' || s._stage === '정산';
-            const sub = isDone ? map[name].준공 : map[name].미준공;
+            const hasCancel = progressKeys.some((k) => s[k] === '취소');
+            const hasHold = !hasCancel && progressKeys.some((k) => s[k] === '보류');
+            const subKey = isDone ? '준공' : hasCancel ? '취소' : hasHold ? '보류' : '진행중';
+            const sub = map[name][subKey];
             const maip = Number(s.시공비_매입 || 0);
             map[name].count++;
             map[name].매입합계 += maip;
@@ -1682,9 +1697,30 @@
                 </ChartCard>
               </div>
 
-              {stats.byConstructor.length > 0 && (
+              {stats.byConstructor.length > 0 && (() => {
+                const SUB_CATS = [
+                  { key: '진행중', label: '진행중', color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
+                  { key: '보류', label: '보류', color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200' },
+                  { key: '취소', label: '취소', color: 'text-red-600', bg: 'bg-red-50 border-red-200' },
+                  { key: '준공', label: '준공', color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
+                ];
+                const [includeFlags, setIncludeFlags] = React.useState({ 진행중: true, 보류: true, 취소: false, 준공: true });
+                const toggleFlag = (k) => setIncludeFlags((prev) => ({ ...prev, [k]: !prev[k] }));
+                return (
                 <div className="bg-white border border-stone-200 rounded-lg p-5 mb-8 overflow-x-auto">
-                  <h3 className="text-sm font-semibold text-stone-700 mb-4">시공사별 물량 상세</h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-stone-700">시공사별 물량 상세</h3>
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="text-stone-500">매입 합계 포함:</span>
+                      {SUB_CATS.map((cat) => (
+                        <label key={cat.key} className="flex items-center gap-1 cursor-pointer select-none">
+                          <input type="checkbox" checked={includeFlags[cat.key]} onChange={() => toggleFlag(cat.key)}
+                            className="w-3.5 h-3.5 rounded border-stone-300 text-slate-800 focus:ring-slate-800" />
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border ${cat.bg}`}>{cat.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-stone-200 text-left">
@@ -1698,12 +1734,9 @@
                     </thead>
                     <tbody>
                       {stats.byConstructor.map((row) => {
+                        const filteredMaip = SUB_CATS.reduce((s, cat) => s + (includeFlags[cat.key] ? (row[cat.key]?.매입합계 || 0) : 0), 0);
                         const kw = CHARGER_TYPES.reduce((s, t) => s + (row[t] || 0) * KW_RATED[t], 0);
                         const ch = CHARGER_TYPES.reduce((s, t) => s + (row[t] || 0) * (t === '100kW' ? 2 : 1), 0);
-                        const subs = [
-                          { key: '미준공', data: row.미준공, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
-                          { key: '준공', data: row.준공, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
-                        ];
                         return (
                           <React.Fragment key={row.name}>
                             <tr className="border-b border-stone-200 bg-stone-50">
@@ -1712,22 +1745,25 @@
                               {CHARGER_TYPES.map((t) => <td key={t} className="py-2 pr-4 text-right num-mono font-semibold">{row[t] || 0}</td>)}
                               <td className="py-2 pr-4 text-right num-mono font-semibold">{kw.toLocaleString()}</td>
                               <td className="py-2 pr-4 text-right num-mono font-semibold">{ch}</td>
-                              <td className="py-2 text-right num-mono font-semibold">{row.매입합계.toLocaleString()}</td>
+                              <td className="py-2 text-right num-mono font-semibold">{filteredMaip.toLocaleString()}</td>
                             </tr>
-                            {subs.map((sub) => {
-                              const subKw = CHARGER_TYPES.reduce((s, t) => s + (sub.data[t] || 0) * KW_RATED[t], 0);
-                              const subCh = CHARGER_TYPES.reduce((s, t) => s + (sub.data[t] || 0) * (t === '100kW' ? 2 : 1), 0);
+                            {SUB_CATS.map((cat) => {
+                              const data = row[cat.key];
+                              if (!data || data.count === 0) return null;
+                              const subKw = CHARGER_TYPES.reduce((s, t) => s + (data[t] || 0) * KW_RATED[t], 0);
+                              const subCh = CHARGER_TYPES.reduce((s, t) => s + (data[t] || 0) * (t === '100kW' ? 2 : 1), 0);
+                              const excluded = !includeFlags[cat.key];
                               return (
-                                <tr key={sub.key} className="border-b border-stone-100">
+                                <tr key={cat.key} className={`border-b border-stone-100 ${excluded ? 'opacity-40' : ''}`}>
                                   <td className="py-1.5 pr-4 pl-6 text-stone-500 text-xs">
-                                    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border ${sub.bg} mr-1.5`}>{sub.key}</span>
-                                    {sub.data.count}개소
+                                    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border ${cat.bg} mr-1.5`}>{cat.label}</span>
+                                    {data.count}개소
                                   </td>
-                                  <td className={`py-1.5 pr-4 text-right num-mono text-xs ${sub.color}`}>{sub.data.count}</td>
-                                  {CHARGER_TYPES.map((t) => <td key={t} className={`py-1.5 pr-4 text-right num-mono text-xs ${sub.color}`}>{sub.data[t] || 0}</td>)}
-                                  <td className={`py-1.5 pr-4 text-right num-mono text-xs ${sub.color}`}>{subKw.toLocaleString()}</td>
-                                  <td className={`py-1.5 pr-4 text-right num-mono text-xs ${sub.color}`}>{subCh}</td>
-                                  <td className={`py-1.5 text-right num-mono text-xs ${sub.color}`}>{sub.data.매입합계.toLocaleString()}</td>
+                                  <td className={`py-1.5 pr-4 text-right num-mono text-xs ${cat.color}`}>{data.count}</td>
+                                  {CHARGER_TYPES.map((t) => <td key={t} className={`py-1.5 pr-4 text-right num-mono text-xs ${cat.color}`}>{data[t] || 0}</td>)}
+                                  <td className={`py-1.5 pr-4 text-right num-mono text-xs ${cat.color}`}>{subKw.toLocaleString()}</td>
+                                  <td className={`py-1.5 pr-4 text-right num-mono text-xs ${cat.color}`}>{subCh}</td>
+                                  <td className={`py-1.5 text-right num-mono text-xs ${cat.color} ${excluded ? 'line-through' : ''}`}>{data.매입합계.toLocaleString()}</td>
                                 </tr>
                               );
                             })}
@@ -1737,7 +1773,8 @@
                     </tbody>
                   </table>
                 </div>
-              )}
+                );
+              })()}
 
               {/* 시계열 */}
               <SectionTitle>월별 추이</SectionTitle>
