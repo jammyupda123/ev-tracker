@@ -156,6 +156,7 @@
       신고여부: ['', 'O', 'X', '해당없음'],
       의무보험: ['', 'O', 'X', '해당없음'],
       진행여부: ['', 'O', '대기중'],
+      신품중고: ['', '신품', '중고'],
     };
 
     const KW_RATED = { 과금형: 3, '7kW벽부': 7, '7kW스탠드': 7, '50kW': 53, '100kW': 105 };
@@ -326,7 +327,13 @@
       '공용/비공용': '공용비공용', '주차면': '주차면', '의무수량': '의무수량',
       '설치환경': '설치환경', '주차 시작층': '주차_시작층', '예상 설치위치': '예상_설치위치',
       '과금형(개)': '과금형', '7kW벽부(개)': '7kW벽부', '7kW스탠드(개)': '7kW스탠드',
-      '50kW(개)': '50kW', '100kW(개)': '100kW', '스탠드폴(개)': '스탠드폴', '캐노피(개)': '캐노피_영업',
+      '50kW(개)': '50kW', '100kW(개)': '100kW',
+      '스탠드폴 수량': '스탠드폴_수량', '스탠드폴 상태': '스탠드폴_상태',
+      '스탠드폴(헬맷) 수량': '스탠드폴헬맷_수량', '스탠드폴(헬맷) 상태': '스탠드폴헬맷_상태',
+      '헬맷 수량': '헬맷_수량', '헬맷 상태': '헬맷_상태',
+      '캐노피1세대 수량': '캐노피1세대_수량', '캐노피1세대 상태': '캐노피1세대_상태',
+      '캐노피2세대(세림) 수량': '캐노피2세대세림_수량', '캐노피2세대(세림) 상태': '캐노피2세대세림_상태',
+      '캐노피2세대(쌍용) 수량': '캐노피2세대쌍용_수량', '캐노피2세대(쌍용) 상태': '캐노피2세대쌍용_상태',
       '신청자 이름': '신청자_이름', '신청자 연락처': '신청자_연락처', '신청자 메일': '신청자_메일',
       'HEV 영업담당자': 'HEV영업담당자',
       '현장담당자 이름': '현장담당자_이름', '현장담당자 소속': '현장담당자_소속',
@@ -379,7 +386,8 @@
 
     // 숫자 필드 (import 시 Number 변환)
     const NUMERIC_KEYS = new Set([
-      '주차면', '의무수량', '과금형', '7kW벽부', '7kW스탠드', '50kW', '100kW', '스탠드폴', '캐노피_영업',
+      '주차면', '의무수량', '과금형', '7kW벽부', '7kW스탠드', '50kW', '100kW',
+      '스탠드폴_수량', '스탠드폴헬맷_수량', '헬맷_수량', '캐노피1세대_수량', '캐노피2세대세림_수량', '캐노피2세대쌍용_수량',
       '인입거리', '시설부담금', '사용전검사', '감리선임_매입', '전기안전관리자',
       '전기안전점검_매입', '시공비_매입', '캐노피_매입', '충전기_매입',
       '시공_과금형_수량', '시공_벽부_수량', '시공_50kW_수량', '시공_50kW_캐노피',
@@ -418,7 +426,12 @@
           '주차 시작층': s.주차_시작층 || '', '예상 설치위치': s.예상_설치위치 || '',
           '과금형(개)': s.과금형 ?? '', '7kW벽부(개)': s['7kW벽부'] ?? '',
           '7kW스탠드(개)': s['7kW스탠드'] ?? '', '50kW(개)': s['50kW'] ?? '', '100kW(개)': s['100kW'] ?? '',
-          '스탠드폴(개)': s.스탠드폴 ?? '', '캐노피(개)': s.캐노피_영업 ?? '',
+          '스탠드폴(개)': s.스탠드폴_수량 ?? '', '스탠드폴 상태': s.스탠드폴_상태 || '',
+          '스탠드폴(헬맷)(개)': s.스탠드폴헬맷_수량 ?? '', '스탠드폴(헬맷) 상태': s.스탠드폴헬맷_상태 || '',
+          '헬맷(개)': s.헬맷_수량 ?? '', '헬맷 상태': s.헬맷_상태 || '',
+          '캐노피1세대(개)': s.캐노피1세대_수량 ?? '', '캐노피1세대 상태': s.캐노피1세대_상태 || '',
+          '캐노피2세대(세림)(개)': s.캐노피2세대세림_수량 ?? '', '캐노피2세대(세림) 상태': s.캐노피2세대세림_상태 || '',
+          '캐노피2세대(쌍용)(개)': s.캐노피2세대쌍용_수량 ?? '', '캐노피2세대(쌍용) 상태': s.캐노피2세대쌍용_상태 || '',
           '총 채널(자동)': totalCh, '총 용량(영업/자동)': totalKw,
           '신청자 이름': s.신청자_이름 || '', '신청자 연락처': s.신청자_연락처 || '', '신청자 메일': s.신청자_메일 || '',
           'HEV 영업담당자': s.HEV영업담당자 || '',
@@ -1103,9 +1116,23 @@
                 <Field key={t} label={`${t} (개)`}><NumInput value={draft[t]} onChange={(v) => update(t, v)} placeholder="0" /></Field>
               ))}
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Field label="스탠드폴 (개)"><NumInput value={draft.스탠드폴} onChange={(v) => update('스탠드폴', v)} placeholder="0" /></Field>
-              <Field label="캐노피 (개)"><NumInput value={draft.캐노피_영업} onChange={(v) => update('캐노피_영업', v)} placeholder="0" /></Field>
+            <p className="text-xs text-stone-500 mt-3 mb-1">스탠드폴</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <Field label="스탠드폴 (개)"><NumInput value={draft.스탠드폴_수량} onChange={(v) => update('스탠드폴_수량', v)} placeholder="0" /></Field>
+              <Field label="스탠드폴(헬맷) (개)"><NumInput value={draft.스탠드폴헬맷_수량} onChange={(v) => update('스탠드폴헬맷_수량', v)} placeholder="0" /></Field>
+              <Field label="헬맷 (개)"><NumInput value={draft.헬맷_수량} onChange={(v) => update('헬맷_수량', v)} placeholder="0" /></Field>
+              <Field label="스탠드폴 신품/중고"><Select value={draft.스탠드폴_상태} onChange={(v) => update('스탠드폴_상태', v)} options={ENUMS.신품중고} /></Field>
+              <Field label="스탠드폴(헬맷) 신품/중고"><Select value={draft.스탠드폴헬맷_상태} onChange={(v) => update('스탠드폴헬맷_상태', v)} options={ENUMS.신품중고} /></Field>
+              <Field label="헬맷 신품/중고"><Select value={draft.헬맷_상태} onChange={(v) => update('헬맷_상태', v)} options={ENUMS.신품중고} /></Field>
+            </div>
+            <p className="text-xs text-stone-500 mt-3 mb-1">캐노피</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <Field label="1세대 (개)"><NumInput value={draft.캐노피1세대_수량} onChange={(v) => update('캐노피1세대_수량', v)} placeholder="0" /></Field>
+              <Field label="2세대(세림) (개)"><NumInput value={draft.캐노피2세대세림_수량} onChange={(v) => update('캐노피2세대세림_수량', v)} placeholder="0" /></Field>
+              <Field label="2세대(쌍용) (개)"><NumInput value={draft.캐노피2세대쌍용_수량} onChange={(v) => update('캐노피2세대쌍용_수량', v)} placeholder="0" /></Field>
+              <Field label="1세대 신품/중고"><Select value={draft.캐노피1세대_상태} onChange={(v) => update('캐노피1세대_상태', v)} options={ENUMS.신품중고} /></Field>
+              <Field label="2세대(세림) 신품/중고"><Select value={draft.캐노피2세대세림_상태} onChange={(v) => update('캐노피2세대세림_상태', v)} options={ENUMS.신품중고} /></Field>
+              <Field label="2세대(쌍용) 신품/중고"><Select value={draft.캐노피2세대쌍용_상태} onChange={(v) => update('캐노피2세대쌍용_상태', v)} options={ENUMS.신품중고} /></Field>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <AutoBox label="총 채널 (개)" value={totalCh || '—'} />
@@ -1290,10 +1317,25 @@
             </div>
           </FormSection>
 
-          <FormSection title="상품정보 (스탠드폴 / 캐노피)">
-            <div className="grid grid-cols-2 gap-3">
-              <AutoBox label="스탠드폴 (영업 연동)" value={Number(draft.스탠드폴 || 0)} unit="개" />
-              <AutoBox label="캐노피 (영업 연동)" value={Number(draft.캐노피_영업 || 0)} unit="개" />
+          <FormSection title="스탠드폴 상품정보">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <AutoBox label="스탠드폴 (영업 연동)" value={Number(draft.스탠드폴_수량 || 0)} unit="개" />
+              <AutoBox label="스탠드폴(헬맷) (영업 연동)" value={Number(draft.스탠드폴헬맷_수량 || 0)} unit="개" />
+              <AutoBox label="헬맷 (영업 연동)" value={Number(draft.헬맷_수량 || 0)} unit="개" />
+              <AutoBox label="스탠드폴 신품/중고" value={draft.스탠드폴_상태 || '—'} />
+              <AutoBox label="스탠드폴(헬맷) 신품/중고" value={draft.스탠드폴헬맷_상태 || '—'} />
+              <AutoBox label="헬맷 신품/중고" value={draft.헬맷_상태 || '—'} />
+            </div>
+          </FormSection>
+
+          <FormSection title="캐노피 상품정보">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <AutoBox label="1세대 (영업 연동)" value={Number(draft.캐노피1세대_수량 || 0)} unit="개" />
+              <AutoBox label="2세대(세림) (영업 연동)" value={Number(draft.캐노피2세대세림_수량 || 0)} unit="개" />
+              <AutoBox label="2세대(쌍용) (영업 연동)" value={Number(draft.캐노피2세대쌍용_수량 || 0)} unit="개" />
+              <AutoBox label="1세대 신품/중고" value={draft.캐노피1세대_상태 || '—'} />
+              <AutoBox label="2세대(세림) 신품/중고" value={draft.캐노피2세대세림_상태 || '—'} />
+              <AutoBox label="2세대(쌍용) 신품/중고" value={draft.캐노피2세대쌍용_상태 || '—'} />
             </div>
           </FormSection>
 
