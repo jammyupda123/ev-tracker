@@ -357,7 +357,8 @@
       '전기사용신청 접수': '전기사용신청_접수', '전기사용신청 인입방식': '전기사용신청_인입방식',
       '전기사용신청 선택요금': '전기사용신청_선택요금', '전기사용신청 시설부담금': '전기사용신청_시설부담금',
       '전기사용신청 납부여부': '전기사용신청_납부여부',
-      '지자체 신고여부': '지자체_신고여부', '의무보험 가입여부': '의무보험_가입여부',
+      '지자체 신고여부': '지자체_신고여부', '행위신고 여부': '행위신고_여부', '의무보험 가입여부': '의무보험_가입여부',
+      '전기안전관리자 업체명': '전기안전관리자_업체명', '전기안전관리자 선임여부': '전기안전관리자_선임여부',
       '사용전점검 신청여부': '사용전점검_신청여부', '사용전점검 예정일': '사용전점검_예정일',
       '사용전검사 신청여부': '사용전검사_신청여부', '각종검사 납부여부': '각종검사_납부여부', '사용전검사 예정일': '사용전검사_예정일',
       '감리선임 업체명': '감리선임_업체명', '감리선임 수수료': '감리선임_수수료', '감리선임 납부여부': '감리선임_납부여부',
@@ -453,7 +454,8 @@
           '전기사용신청 접수': s.전기사용신청_접수 || '', '전기사용신청 인입방식': s.전기사용신청_인입방식 || '',
           '전기사용신청 선택요금': s.전기사용신청_선택요금 || '', '전기사용신청 시설부담금': s.전기사용신청_시설부담금 ?? '',
           '전기사용신청 납부여부': s.전기사용신청_납부여부 || '',
-          '지자체 신고여부': s.지자체_신고여부 || '', '의무보험 가입여부': s.의무보험_가입여부 || '',
+          '지자체 신고여부': s.지자체_신고여부 || '', '행위신고 여부': s.행위신고_여부 || '', '의무보험 가입여부': s.의무보험_가입여부 || '',
+          '전기안전관리자 업체명': s.전기안전관리자_업체명 || '', '전기안전관리자 선임여부': s.전기안전관리자_선임여부 || '',
           '각종검사 점검신청': s.각종검사_점검신청 || '', '각종검사 검사신청': s.각종검사_검사신청 || '',
           '사용전점검 신청여부': s.사용전점검_신청여부 || '', '사용전점검 예정일': s.사용전점검_예정일 || '',
           '사용전검사 신청여부': s.사용전검사_신청여부 || '', '사용전검사 수수료': s.사용전검사 ?? '', '각종검사 납부여부': s.각종검사_납부여부 || '', '사용전검사 예정일': s.사용전검사_예정일 || '',
@@ -1318,12 +1320,28 @@
           <FormSection title="충전시설 지자체 신고">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Field label="신고여부"><Select value={draft.지자체_신고여부} onChange={(v) => update('지자체_신고여부', v)} options={ENUMS.신고여부} /></Field>
+              <Field label="행위신고 여부"><Select value={draft.행위신고_여부} onChange={(v) => update('행위신고_여부', v)} options={ENUMS.신고여부} /></Field>
             </div>
           </FormSection>
 
           <FormSection title="의무보험">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Field label="가입여부"><Select value={draft.의무보험_가입여부} onChange={(v) => update('의무보험_가입여부', v)} options={ENUMS.의무보험} /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="감리선임">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Field label="업체명"><TextInput value={draft.감리선임_업체명} onChange={(v) => update('감리선임_업체명', v)} /></Field>
+              <Field label="수수료"><AutoBox label="" value={Number(draft.감리선임_매입 || 0).toLocaleString()} unit="원 (설계/견적 연동)" /></Field>
+              <Field label="납부여부"><TextInput value={draft.감리선임_납부여부} onChange={(v) => update('감리선임_납부여부', v)} /></Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="전기안전관리자">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Field label="업체명"><TextInput value={draft.전기안전관리자_업체명} onChange={(v) => update('전기안전관리자_업체명', v)} /></Field>
+              <Field label="선임여부"><TextInput value={draft.전기안전관리자_선임여부} onChange={(v) => update('전기안전관리자_선임여부', v)} /></Field>
             </div>
           </FormSection>
 
@@ -1354,14 +1372,6 @@
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Field label="신청여부"><TextInput value={draft.사용검사_신청여부} onChange={(v) => update('사용검사_신청여부', v)} /></Field>
               <Field label="사용검사 예정일"><TextInput type="date" value={draft.사용검사_예정일} onChange={(v) => update('사용검사_예정일', v)} /></Field>
-            </div>
-          </FormSection>
-
-          <FormSection title="감리선임">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Field label="업체명"><TextInput value={draft.감리선임_업체명} onChange={(v) => update('감리선임_업체명', v)} /></Field>
-              <Field label="수수료"><AutoBox label="" value={Number(draft.감리선임_매입 || 0).toLocaleString()} unit="원 (설계/견적 연동)" /></Field>
-              <Field label="납부여부"><TextInput value={draft.감리선임_납부여부} onChange={(v) => update('감리선임_납부여부', v)} /></Field>
             </div>
           </FormSection>
 
