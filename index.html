@@ -129,6 +129,7 @@
       LogIn: (p) => <I {...p}><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></I>,
       Download: (p) => <I {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></I>,
       Upload: (p) => <I {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></I>,
+      Copy: (p) => <I {...p}><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></I>,
     };
 
     // ============================================================
@@ -656,6 +657,7 @@
                 onNew={() => { setSelectedId(null); setView('editor'); }} />
             ) : view === 'editor' ? (
               <SiteEditor site={selectedSite} onSave={saveSite} onDelete={deleteSite}
+                onCopy={(copyData) => { setSelectedId(null); setView('editor'); setTimeout(() => { window.__copyDraft = copyData; window.dispatchEvent(new Event('pasteCopy')); }, 50); }}
                 onCancel={() => { setView('list'); setSelectedId(null); }} />
             ) : (
               <Dashboard sites={sites} />
@@ -880,12 +882,19 @@
       );
     }
 
-    function SiteEditor({ site, onSave, onDelete, onCancel }) {
+    function SiteEditor({ site, onSave, onDelete, onCopy, onCancel }) {
       const [draft, setDraft] = useState(site || {});
       const [activeTab, setActiveTab] = useState('영업');
       const [saving, setSaving] = useState(false);
 
       useEffect(() => { setDraft(site || {}); }, [site]);
+      useEffect(() => {
+        const handler = () => {
+          if (window.__copyDraft) { setDraft(window.__copyDraft); delete window.__copyDraft; }
+        };
+        window.addEventListener('pasteCopy', handler);
+        return () => window.removeEventListener('pasteCopy', handler);
+      }, []);
       const update = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
       const isDirty = useMemo(() => JSON.stringify(site || {}) !== JSON.stringify(draft || {}), [site, draft]);
       const hasName = !!(draft.현장명 && draft.현장명.trim());
@@ -923,6 +932,18 @@
             </button>
             <div className="flex items-center gap-2">
               {isDirty && <span className="text-xs text-amber-700 font-medium px-2 py-1 bg-amber-50 rounded">변경 사항 있음</span>}
+              {site && (
+                <button onClick={() => {
+                    const copy = { ...draft };
+                    delete copy.id;
+                    delete copy.등록일자;
+                    copy.현장명 = (copy.현장명 || '') + ' (복사)';
+                    onCopy(copy);
+                  }}
+                  className="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded transition-colors flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-slate-400">
+                  <Icons.Copy size={14} /> 복사
+                </button>
+              )}
               {site && (
                 <button onClick={() => onDelete(site.id)}
                   className="px-3 py-2 text-sm text-red-700 hover:bg-red-50 rounded transition-colors flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-red-400">
