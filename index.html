@@ -551,6 +551,18 @@
       const [searchTerm, setSearchTerm] = useState('');
       const [filterStage, setFilterStage] = useState('전체');
       const [sortBy, setSortBy] = useState('recent');
+      const [memoWidth, setMemoWidth] = useState(224);
+
+      useEffect(() => {
+        db.collection('settings').doc('ui').get().then((doc) => {
+          if (doc.exists && doc.data().memoWidth) setMemoWidth(doc.data().memoWidth);
+        }).catch(() => {});
+      }, []);
+
+      const saveMemoWidth = (w) => {
+        setMemoWidth(w);
+        db.collection('settings').doc('ui').set({ memoWidth: w }, { merge: true }).catch(() => {});
+      };
 
       useEffect(() => {
         const sitesCol = db.collection('sites');
@@ -662,6 +674,7 @@
                 onNew={() => { setSelectedId(null); setView('editor'); }} />
             ) : view === 'editor' ? (
               <SiteEditor site={selectedSite} onSave={saveSite} onDelete={deleteSite}
+                memoWidth={memoWidth} onMemoWidthChange={saveMemoWidth}
                 onCopy={(copyData) => { setSelectedId(null); setView('editor'); setTimeout(() => { window.__copyDraft = copyData; window.dispatchEvent(new Event('pasteCopy')); }, 50); }}
                 onCancel={() => { setView('list'); setSelectedId(null); }} />
             ) : (
@@ -724,6 +737,7 @@
     function SiteList({ sites, searchTerm, setSearchTerm, filterStage, setFilterStage, sortBy, setSortBy, onEdit, onNew }) {
       const filtered = useMemo(() => {
         const term = searchTerm.toLowerCase();
+        const progressKeys = ['영업진행', '실사진행', '설계진행', '계약진행', '출하진행', '시공진행', '준공진행', '정산진행'];
         const enriched = sites.map((s) => {
           const prog = getProgress(s);
           return {
@@ -731,6 +745,8 @@
             _stage: getAutoStage(s),
             _progressRate: prog.progressRate,
             _hasProblem: prog.statuses.some((st) => st.status === 'problem'),
+            _hasHold: progressKeys.some((k) => s[k] === '보류'),
+            _hasCancel: progressKeys.some((k) => s[k] === '취소'),
           };
         });
         const result = enriched.filter((s) => {
@@ -753,6 +769,8 @@
         } else {
           result.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
         }
+        const sortRank = (s) => s._hasCancel ? 2 : s._hasHold ? 1 : 0;
+        result.sort((a, b) => sortRank(a) - sortRank(b));
         return result;
       }, [sites, searchTerm, filterStage, sortBy]);
 
@@ -887,9 +905,11 @@
       );
     }
 
-    function SiteEditor({ site, onSave, onDelete, onCopy, onCancel }) {
+    function SiteEditor({ site, onSave, onDelete, onCopy, onCancel, memoWidth, onMemoWidthChange }) {
       const [draft, setDraft] = useState(site || {});
       const [activeTab, setActiveTab] = useState('영업');
+      const [memoWidthLocal, setMemoWidthLocal] = useState(memoWidth);
+      useEffect(() => { setMemoWidthLocal(memoWidth); }, [memoWidth]);
       const [saving, setSaving] = useState(false);
 
       useEffect(() => { setDraft(site || {}); }, [site]);
@@ -1000,7 +1020,8 @@
               ))}
             </div>
 
-            <div className="p-6">
+            <div className="flex">
+            <div className="flex-1 min-w-0 p-6">
               {activeTab === '영업' && <영업Form draft={draft} update={update} />}
               {activeTab === '현장실사' && <현장실사Form draft={draft} update={update} />}
               {activeTab === '설계/견적' && <설계견적Form draft={draft} update={update} />}
@@ -1010,6 +1031,44 @@
               {activeTab === '준공' && <준공Form draft={draft} update={update} />}
               {activeTab === '정산' && <정산Form draft={draft} update={update} />}
               {activeTab === '비고' && <비고Form draft={draft} update={update} />}
+            </div>
+            {activeTab !== '비고' && (() => {
+              const MEMO_MAP = { '영업': '영업_메모', '현장실사': '실사_메모', '설계/견적': '설계견적_메모', '계약': '계약_메모', '출하': '출하_메모', '시공': '시공_메모', '준공': '준공_메모', '정산': '정산_메모' };
+              const memoKey = MEMO_MAP[activeTab];
+              const handleDrag = (e) => {
+                e.preventDefault();
+                const startX = e.clientX;
+                const startW = memoWidthLocal;
+                let finalW = startW;
+                const onMove = (ev) => {
+                  finalW = Math.max(120, Math.min(500, startW + (startX - ev.clientX)));
+                  setMemoWidthLocal(finalW);
+                };
+                const onUp = () => {
+                  document.removeEventListener('mousemove', onMove);
+                  document.removeEventListener('mouseup', onUp);
+                  onMemoWidthChange(finalW);
+                };
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+              };
+              return memoKey ? (
+                <div className="shrink-0 bg-stone-50 flex flex-col relative" style={{ width: memoWidthLocal + 'px' }}>
+                  <div onMouseDown={handleDrag} className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-slate-300 active:bg-slate-400 transition-colors" style={{ borderLeft: '1px solid #D6D3D1' }} />
+                  <div className="p-4 flex flex-col flex-1" style={{ marginLeft: '6px' }}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+                      <span className="text-xs font-semibold text-stone-600">{activeTab} 메모</span>
+                    </div>
+                    <textarea className="flex-1 w-full bg-white border border-stone-200 rounded px-3 py-2 text-xs text-stone-700 resize-none focus:outline-none focus:ring-2 focus:ring-slate-800 focus:border-transparent"
+                      style={{ minHeight: '200px' }}
+                      value={draft[memoKey] || ''}
+                      onChange={(e) => update(memoKey, e.target.value)}
+                      placeholder={`${activeTab} 관련 특이사항을 기록하세요...`} />
+                  </div>
+                </div>
+              ) : null;
+            })()}
             </div>
           </div>
         </div>
@@ -1205,10 +1264,6 @@
           <FormSection title="영업 진행현황">
             <Field label="진행현황"><Select value={draft.영업진행} onChange={(v) => update('영업진행', v)} options={ENUMS.영업진행} /></Field>
           </FormSection>
-
-          <FormSection title="메모">
-            <Textarea value={draft.영업_메모} onChange={(v) => update('영업_메모', v)} rows={3} placeholder="영업 관련 메모..." />
-          </FormSection>
         </div>
       );
     }
@@ -1247,10 +1302,6 @@
             </div>
           </FormSection>
 
-          <FormSection title="특이사항">
-            <Field label="메모"><textarea className="w-full border border-stone-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-800 focus:border-transparent resize-y" rows={3} value={draft.실사_메모 || ''} onChange={(e) => update('실사_메모', e.target.value)} placeholder="현장 특이사항을 자유롭게 기입하세요" /></Field>
-          </FormSection>
-
           <FormSection title="실사 진행현황">
             <Field label="진행현황"><Select value={draft.실사진행} onChange={(v) => update('실사진행', v)} options={ENUMS.실사진행} /></Field>
           </FormSection>
@@ -1283,10 +1334,6 @@
           <FormSection title="설계/견적 진행현황">
             <Field label="진행현황"><Select value={draft.설계진행} onChange={(v) => update('설계진행', v)} options={ENUMS.설계진행} /></Field>
           </FormSection>
-
-          <FormSection title="메모">
-            <Textarea value={draft.설계견적_메모} onChange={(v) => update('설계견적_메모', v)} rows={3} placeholder="설계/견적 관련 메모..." />
-          </FormSection>
         </div>
       );
     }
@@ -1309,10 +1356,6 @@
 
           <FormSection title="계약 진행현황">
             <Field label="진행현황"><Select value={draft.계약진행} onChange={(v) => update('계약진행', v)} options={ENUMS.계약진행} /></Field>
-          </FormSection>
-
-          <FormSection title="메모">
-            <Textarea value={draft.계약_메모} onChange={(v) => update('계약_메모', v)} rows={3} placeholder="계약 관련 메모..." />
           </FormSection>
         </div>
       );
@@ -1399,10 +1442,6 @@
 
           <FormSection title="출하 진행현황">
             <Field label="진행현황"><Select value={draft.출하진행} onChange={(v) => update('출하진행', v)} options={ENUMS.출하진행} /></Field>
-          </FormSection>
-
-          <FormSection title="메모">
-            <Textarea value={draft.출하_메모} onChange={(v) => update('출하_메모', v)} rows={3} placeholder="출하 관련 메모..." />
           </FormSection>
         </div>
       );
@@ -1517,10 +1556,6 @@
           <FormSection title="시공 진행현황">
             <Field label="진행현황"><Select value={draft.시공진행} onChange={(v) => update('시공진행', v)} options={ENUMS.시공진행} /></Field>
           </FormSection>
-
-          <FormSection title="메모">
-            <Textarea value={draft.시공_메모} onChange={(v) => update('시공_메모', v)} rows={3} placeholder="시공 관련 메모..." />
-          </FormSection>
         </div>
       );
     }
@@ -1537,10 +1572,6 @@
               <Field label="오픈일자"><TextInput type="date" value={draft.오픈일자} onChange={(v) => update('오픈일자', v)} /></Field>
             </div>
             <Field label="준공서류 제출현황"><Select value={draft.준공진행} onChange={(v) => update('준공진행', v)} options={ENUMS.준공진행} /></Field>
-          </FormSection>
-
-          <FormSection title="메모">
-            <Textarea value={draft.준공_메모} onChange={(v) => update('준공_메모', v)} rows={3} placeholder="준공 관련 메모..." />
           </FormSection>
         </div>
       );
@@ -1578,10 +1609,6 @@
               <AutoBox label="마진률" value={marginRate ? `${(marginRate * 100).toFixed(1)}%` : '—'} color={marginRate >= 0 ? 'text-emerald-700' : 'text-red-600'} />
             </div>
             <p className="text-xs text-stone-500">마진 = 공사 매출 − 매입 자동 합계. 공사매입비는 설계/견적 시공비에서 자동 연동 (시공사 정산 지급 대상).</p>
-          </FormSection>
-
-          <FormSection title="메모">
-            <Textarea value={draft.정산_메모} onChange={(v) => update('정산_메모', v)} rows={3} placeholder="정산 관련 메모..." />
           </FormSection>
         </div>
       );
