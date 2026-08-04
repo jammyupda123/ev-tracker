@@ -383,6 +383,8 @@
       '보조금 금액': '보조금', '보조금 신청일': '보조금_신청일', '보조금 지급일': '보조금_지급일',
       '공사 매출(원)': '공사매출', '공사 매입(원)': '공사매입',
       '비고': '비고',
+      '영업 메모': '영업_메모', '설계견적 메모': '설계견적_메모', '계약 메모': '계약_메모',
+      '출하 메모': '출하_메모', '시공 메모': '시공_메모', '준공 메모': '준공_메모', '정산 메모': '정산_메모',
     };
 
     // 숫자 필드 (import 시 Number 변환)
@@ -487,6 +489,9 @@
           '공사 매출(원)': s.공사매출 ?? '', '공사 매입(원)': maipSum,
           '마진(자동)': margin, '마진률(자동)': marginRate ? `${(marginRate * 100).toFixed(2)}%` : '',
           '비고': s.비고 || '',
+          '영업 메모': s.영업_메모 || '', '실사 메모': s.실사_메모 || '', '설계견적 메모': s.설계견적_메모 || '',
+          '계약 메모': s.계약_메모 || '', '출하 메모': s.출하_메모 || '', '시공 메모': s.시공_메모 || '',
+          '준공 메모': s.준공_메모 || '', '정산 메모': s.정산_메모 || '',
           'updatedAt': s.updatedAt || '',
         };
       });
@@ -1200,6 +1205,10 @@
           <FormSection title="영업 진행현황">
             <Field label="진행현황"><Select value={draft.영업진행} onChange={(v) => update('영업진행', v)} options={ENUMS.영업진행} /></Field>
           </FormSection>
+
+          <FormSection title="메모">
+            <Textarea value={draft.영업_메모} onChange={(v) => update('영업_메모', v)} rows={3} placeholder="영업 관련 메모..." />
+          </FormSection>
         </div>
       );
     }
@@ -1274,6 +1283,10 @@
           <FormSection title="설계/견적 진행현황">
             <Field label="진행현황"><Select value={draft.설계진행} onChange={(v) => update('설계진행', v)} options={ENUMS.설계진행} /></Field>
           </FormSection>
+
+          <FormSection title="메모">
+            <Textarea value={draft.설계견적_메모} onChange={(v) => update('설계견적_메모', v)} rows={3} placeholder="설계/견적 관련 메모..." />
+          </FormSection>
         </div>
       );
     }
@@ -1296,6 +1309,10 @@
 
           <FormSection title="계약 진행현황">
             <Field label="진행현황"><Select value={draft.계약진행} onChange={(v) => update('계약진행', v)} options={ENUMS.계약진행} /></Field>
+          </FormSection>
+
+          <FormSection title="메모">
+            <Textarea value={draft.계약_메모} onChange={(v) => update('계약_메모', v)} rows={3} placeholder="계약 관련 메모..." />
           </FormSection>
         </div>
       );
@@ -1382,6 +1399,10 @@
 
           <FormSection title="출하 진행현황">
             <Field label="진행현황"><Select value={draft.출하진행} onChange={(v) => update('출하진행', v)} options={ENUMS.출하진행} /></Field>
+          </FormSection>
+
+          <FormSection title="메모">
+            <Textarea value={draft.출하_메모} onChange={(v) => update('출하_메모', v)} rows={3} placeholder="출하 관련 메모..." />
           </FormSection>
         </div>
       );
@@ -1496,6 +1517,10 @@
           <FormSection title="시공 진행현황">
             <Field label="진행현황"><Select value={draft.시공진행} onChange={(v) => update('시공진행', v)} options={ENUMS.시공진행} /></Field>
           </FormSection>
+
+          <FormSection title="메모">
+            <Textarea value={draft.시공_메모} onChange={(v) => update('시공_메모', v)} rows={3} placeholder="시공 관련 메모..." />
+          </FormSection>
         </div>
       );
     }
@@ -1512,6 +1537,10 @@
               <Field label="오픈일자"><TextInput type="date" value={draft.오픈일자} onChange={(v) => update('오픈일자', v)} /></Field>
             </div>
             <Field label="준공서류 제출현황"><Select value={draft.준공진행} onChange={(v) => update('준공진행', v)} options={ENUMS.준공진행} /></Field>
+          </FormSection>
+
+          <FormSection title="메모">
+            <Textarea value={draft.준공_메모} onChange={(v) => update('준공_메모', v)} rows={3} placeholder="준공 관련 메모..." />
           </FormSection>
         </div>
       );
@@ -1550,6 +1579,10 @@
             </div>
             <p className="text-xs text-stone-500">마진 = 공사 매출 − 매입 자동 합계. 공사매입비는 설계/견적 시공비에서 자동 연동 (시공사 정산 지급 대상).</p>
           </FormSection>
+
+          <FormSection title="메모">
+            <Textarea value={draft.정산_메모} onChange={(v) => update('정산_메모', v)} rows={3} placeholder="정산 관련 메모..." />
+          </FormSection>
         </div>
       );
     }
@@ -1560,8 +1593,40 @@
     function 비고Form({ draft, update }) {
       return (
         <div className="space-y-6">
-          <FormSection title="비고">
-            <Field label="자유 메모"><Textarea value={draft.비고} onChange={(v) => update('비고', v)} rows={10} placeholder="현장 관련 자유 메모..." /></Field>
+          <FormSection title="영업 메모">
+            <Textarea value={draft.영업_메모} onChange={(v) => update('영업_메모', v)} rows={3} placeholder="영업 관련 메모..." />
+          </FormSection>
+
+          <FormSection title="현장실사 메모">
+            <Textarea value={draft.실사_메모} onChange={(v) => update('실사_메모', v)} rows={3} placeholder="현장실사 관련 메모..." />
+          </FormSection>
+
+          <FormSection title="설계/견적 메모">
+            <Textarea value={draft.설계견적_메모} onChange={(v) => update('설계견적_메모', v)} rows={3} placeholder="설계/견적 관련 메모..." />
+          </FormSection>
+
+          <FormSection title="계약 메모">
+            <Textarea value={draft.계약_메모} onChange={(v) => update('계약_메모', v)} rows={3} placeholder="계약 관련 메모..." />
+          </FormSection>
+
+          <FormSection title="출하 메모">
+            <Textarea value={draft.출하_메모} onChange={(v) => update('출하_메모', v)} rows={3} placeholder="출하 관련 메모..." />
+          </FormSection>
+
+          <FormSection title="시공 메모">
+            <Textarea value={draft.시공_메모} onChange={(v) => update('시공_메모', v)} rows={3} placeholder="시공 관련 메모..." />
+          </FormSection>
+
+          <FormSection title="준공 메모">
+            <Textarea value={draft.준공_메모} onChange={(v) => update('준공_메모', v)} rows={3} placeholder="준공 관련 메모..." />
+          </FormSection>
+
+          <FormSection title="정산 메모">
+            <Textarea value={draft.정산_메모} onChange={(v) => update('정산_메모', v)} rows={3} placeholder="정산 관련 메모..." />
+          </FormSection>
+
+          <FormSection title="종합 비고">
+            <Textarea value={draft.비고} onChange={(v) => update('비고', v)} rows={6} placeholder="종합 메모..." />
           </FormSection>
         </div>
       );
