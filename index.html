@@ -678,7 +678,7 @@
                 onCopy={(copyData) => { setSelectedId(null); setView('editor'); setTimeout(() => { window.__copyDraft = copyData; window.dispatchEvent(new Event('pasteCopy')); }, 50); }}
                 onCancel={() => { setView('list'); setSelectedId(null); }} />
             ) : (
-              <Dashboard sites={sites} />
+              <Dashboard sites={sites} onEditFromDashboard={(id) => { setSelectedId(id); setView('editor'); }} />
             )}
           </main>
         </div>
@@ -1698,7 +1698,7 @@
       }));
     };
 
-    function Dashboard({ sites }) {
+    function Dashboard({ sites, onEditFromDashboard }) {
       const stats = useMemo(() => {
         const enriched = sites.map((s) => ({ ...s, _stage: getAutoStage(s), _prog: getProgress(s) }));
         const total = enriched.length;
@@ -1726,7 +1726,7 @@
           const progressKeys = ['영업진행', '실사진행', '설계진행', '계약진행', '출하진행', '시공진행', '준공진행', '정산진행'];
           enriched.forEach((s) => {
             const name = (s.시공사 && String(s.시공사).trim()) || '미배정';
-            if (!map[name]) map[name] = { name, count: 0, 매입합계: 0, 취소: emptySub(), 보류: emptySub(), 진행중: emptySub(), 준공: emptySub() };
+            if (!map[name]) map[name] = { name, count: 0, 매입합계: 0, sites: [], 취소: emptySub(), 보류: emptySub(), 진행중: emptySub(), 준공: emptySub() };
             const isDone = s._stage === '준공' || s._stage === '정산';
             const hasCancel = progressKeys.some((k) => s[k] === '취소');
             const hasHold = !hasCancel && progressKeys.some((k) => s[k] === '보류');
@@ -1735,6 +1735,7 @@
             const maip = Number(s.시공비_매입 || 0);
             map[name].count++;
             map[name].매입합계 += maip;
+            map[name].sites.push({ id: s.id, 현장명: s.현장명, _stage: s._stage, subKey, maip, chargers: CHARGER_TYPES.reduce((o, t) => { o[t] = Number(s[t] || 0); return o; }, {}) });
             sub.count++;
             sub.매입합계 += maip;
             CHARGER_TYPES.forEach((t) => {
@@ -1918,8 +1919,11 @@
                   { key: '취소', label: '취소', color: 'text-red-600', bg: 'bg-red-50 border-red-200' },
                   { key: '준공', label: '준공', color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
                 ];
+                const STAGE_BADGE = { '진행중': 'bg-amber-50 text-amber-700 border-amber-200', '보류': 'bg-orange-50 text-orange-700 border-orange-200', '취소': 'bg-red-50 text-red-700 border-red-200', '준공': 'bg-emerald-50 text-emerald-700 border-emerald-200' };
                 const [includeFlags, setIncludeFlags] = React.useState({ 진행중: true, 보류: true, 취소: false, 준공: true });
+                const [expanded, setExpanded] = React.useState({});
                 const toggleFlag = (k) => setIncludeFlags((prev) => ({ ...prev, [k]: !prev[k] }));
+                const toggleExpand = (name) => setExpanded((prev) => ({ ...prev, [name]: !prev[name] }));
                 return (
                 <div className="bg-white border border-stone-200 rounded-lg p-5 mb-8 overflow-x-auto">
                   <div className="flex items-center justify-between mb-4">
@@ -1951,17 +1955,42 @@
                         const filteredMaip = SUB_CATS.reduce((s, cat) => s + (includeFlags[cat.key] ? (row[cat.key]?.매입합계 || 0) : 0), 0);
                         const kw = CHARGER_TYPES.reduce((s, t) => s + (row[t] || 0) * KW_RATED[t], 0);
                         const ch = CHARGER_TYPES.reduce((s, t) => s + (row[t] || 0) * (t === '100kW' ? 2 : 1), 0);
+                        const isOpen = expanded[row.name];
+                        const sortedSites = [...(row.sites || [])].sort((a, b) => {
+                          const rank = (s) => s.subKey === '취소' ? 2 : s.subKey === '보류' ? 1 : 0;
+                          return rank(a) - rank(b);
+                        });
                         return (
                           <React.Fragment key={row.name}>
-                            <tr className="border-b border-stone-200 bg-stone-50">
-                              <td className="py-2 pr-4 font-semibold text-stone-800">{row.name}</td>
+                            <tr className="border-b border-stone-200 bg-stone-50 cursor-pointer hover:bg-stone-100 transition-colors" onClick={() => toggleExpand(row.name)}>
+                              <td className="py-2 pr-4 font-semibold text-stone-800">
+                                <span className="text-stone-400 text-xs mr-1.5">{isOpen ? '▾' : '▸'}</span>{row.name}
+                              </td>
                               <td className="py-2 pr-4 text-right num-mono font-semibold">{row.count}</td>
                               {CHARGER_TYPES.map((t) => <td key={t} className="py-2 pr-4 text-right num-mono font-semibold">{row[t] || 0}</td>)}
                               <td className="py-2 pr-4 text-right num-mono font-semibold">{kw.toLocaleString()}</td>
                               <td className="py-2 pr-4 text-right num-mono font-semibold">{ch}</td>
                               <td className="py-2 text-right num-mono font-semibold">{filteredMaip.toLocaleString()}</td>
                             </tr>
-                            {SUB_CATS.map((cat) => {
+                            {isOpen && sortedSites.map((site) => {
+                              const sKw = CHARGER_TYPES.reduce((s, t) => s + (site.chargers[t] || 0) * KW_RATED[t], 0);
+                              const sCh = CHARGER_TYPES.reduce((s, t) => s + (site.chargers[t] || 0) * (t === '100kW' ? 2 : 1), 0);
+                              const badgeCls = STAGE_BADGE[site.subKey] || '';
+                              return (
+                                <tr key={site.id} className="border-b border-stone-100 hover:bg-blue-50 transition-colors">
+                                  <td className="py-1.5 pr-4 pl-8 text-xs">
+                                    <span className="text-blue-600 hover:underline cursor-pointer" onClick={(e) => { e.stopPropagation(); onEditFromDashboard && onEditFromDashboard(site.id); }}>{site.현장명 || '(이름없음)'}</span>
+                                    <span className={`ml-2 inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border ${badgeCls}`}>{site._stage || site.subKey}</span>
+                                  </td>
+                                  <td className="py-1.5 pr-4 text-right num-mono text-xs text-stone-500">—</td>
+                                  {CHARGER_TYPES.map((t) => <td key={t} className="py-1.5 pr-4 text-right num-mono text-xs text-stone-500">{site.chargers[t] || 0}</td>)}
+                                  <td className="py-1.5 pr-4 text-right num-mono text-xs text-stone-500">{sKw.toLocaleString()}</td>
+                                  <td className="py-1.5 pr-4 text-right num-mono text-xs text-stone-500">{sCh}</td>
+                                  <td className="py-1.5 text-right num-mono text-xs text-stone-500">{site.maip.toLocaleString()}</td>
+                                </tr>
+                              );
+                            })}
+                            {!isOpen && SUB_CATS.map((cat) => {
                               const data = row[cat.key];
                               if (!data || data.count === 0) return null;
                               const subKw = CHARGER_TYPES.reduce((s, t) => s + (data[t] || 0) * KW_RATED[t], 0);
