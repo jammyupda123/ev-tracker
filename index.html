@@ -1923,7 +1923,17 @@
                   { key: '취소', label: '취소', color: 'text-red-600', bg: 'bg-red-50 border-red-200' },
                   { key: '준공', label: '준공', color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
                 ];
-                const STAGE_BADGE = { '진행중': 'bg-amber-50 text-amber-700 border-amber-200', '보류': 'bg-orange-50 text-orange-700 border-orange-200', '취소': 'bg-red-50 text-red-700 border-red-200', '준공': 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+                const STAGE_BADGE = {
+                  '영업': 'bg-blue-50 text-blue-700 border-blue-200',
+                  '현장실사': 'bg-green-50 text-green-700 border-green-200',
+                  '설계/견적': 'bg-teal-50 text-teal-700 border-teal-200',
+                  '계약': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                  '출하': 'bg-purple-50 text-purple-700 border-purple-200',
+                  '시공': 'bg-rose-50 text-rose-700 border-rose-200',
+                  '준공': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                  '정산': 'bg-slate-100 text-slate-700 border-slate-300',
+                };
+                const STAGE_ORDER = { '영업': 1, '현장실사': 2, '설계/견적': 3, '계약': 4, '출하': 5, '시공': 6, '준공': 7, '정산': 8 };
                 const [includeFlags, setIncludeFlags] = React.useState({ 진행중: true, 보류: true, 취소: false, 준공: true });
                 const [expanded, setExpanded] = React.useState({});
                 const toggleFlag = (k) => setIncludeFlags((prev) => ({ ...prev, [k]: !prev[k] }));
@@ -1961,8 +1971,10 @@
                         const ch = CHARGER_TYPES.reduce((s, t) => s + (row[t] || 0) * (t === '100kW' ? 2 : 1), 0);
                         const isOpen = expanded[row.name];
                         const sortedSites = [...(row.sites || [])].sort((a, b) => {
-                          const rank = (s) => s.subKey === '취소' ? 2 : s.subKey === '보류' ? 1 : 0;
-                          return rank(a) - rank(b);
+                          const rank = (s) => s.subKey === '취소' ? 100 : s.subKey === '보류' ? 50 : 0;
+                          const rDiff = rank(a) - rank(b);
+                          if (rDiff !== 0) return rDiff;
+                          return (STAGE_ORDER[b._stage] || 0) - (STAGE_ORDER[a._stage] || 0);
                         });
                         return (
                           <React.Fragment key={row.name}>
@@ -1979,12 +1991,16 @@
                             {isOpen && sortedSites.map((site) => {
                               const sKw = CHARGER_TYPES.reduce((s, t) => s + (site.chargers[t] || 0) * KW_RATED[t], 0);
                               const sCh = CHARGER_TYPES.reduce((s, t) => s + (site.chargers[t] || 0) * (t === '100kW' ? 2 : 1), 0);
-                              const badgeCls = STAGE_BADGE[site.subKey] || '';
+                              const badgeCls = STAGE_BADGE[site._stage] || 'bg-stone-50 text-stone-600 border-stone-200';
+                              const isCancel = site.subKey === '취소';
+                              const isHold = site.subKey === '보류';
                               return (
-                                <tr key={site.id} className="border-b border-stone-100 hover:bg-blue-50 transition-colors">
-                                  <td className="py-1.5 pr-4 pl-8 text-xs">
+                                <tr key={site.id} className={`border-b border-stone-100 hover:bg-blue-50 transition-colors ${isCancel ? 'opacity-35' : ''}`}>
+                                  <td className="py-1.5 pr-4 pl-8 text-[13px]">
                                     <span className="text-blue-600 hover:underline cursor-pointer" onClick={(e) => { e.stopPropagation(); onEditFromDashboard && onEditFromDashboard(site.id); }}>{site.현장명 || '(이름없음)'}</span>
-                                    <span className={`ml-2 inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border ${badgeCls}`}>{site._stage || site.subKey}</span>
+                                    <span className={`ml-2 inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border ${badgeCls}`}>{site._stage || '—'}</span>
+                                    {isHold && <span className="ml-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border bg-orange-50 text-orange-700 border-orange-200">보류</span>}
+                                    {isCancel && <span className="ml-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border bg-red-50 text-red-700 border-red-200">취소</span>}
                                   </td>
                                   <td className="py-1.5 pr-4 text-right num-mono text-xs text-stone-500">—</td>
                                   {CHARGER_TYPES.map((t) => <td key={t} className="py-1.5 pr-4 text-right num-mono text-xs text-stone-500">{site.chargers[t] || 0}</td>)}
