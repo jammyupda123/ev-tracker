@@ -765,12 +765,14 @@
             (s.주소 || '').includes(term)
           );
         });
+        const nameCmp = (a, b) => (a.현장명 || '').localeCompare(b.현장명 || '', 'ko', { numeric: true });
+        const pRate = (s) => Math.round(s._progressRate * 100);
         if (sortBy === 'progressLow') {
-          result.sort((a, b) => a._progressRate - b._progressRate);
+          result.sort((a, b) => (pRate(a) - pRate(b)) || nameCmp(a, b));
         } else if (sortBy === 'progressHigh') {
-          result.sort((a, b) => b._progressRate - a._progressRate);
+          result.sort((a, b) => (pRate(b) - pRate(a)) || nameCmp(a, b));
         } else {
-          result.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+          result.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '') || nameCmp(a, b));
         }
         const sortRank = (s) => s._hasCancel ? 2 : s._hasHold ? 1 : 0;
         result.sort((a, b) => sortRank(a) - sortRank(b));
