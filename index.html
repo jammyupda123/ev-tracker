@@ -1974,7 +1974,9 @@
                           const rank = (s) => s.subKey === '취소' ? 100 : s.subKey === '보류' ? 50 : 0;
                           const rDiff = rank(a) - rank(b);
                           if (rDiff !== 0) return rDiff;
-                          return (STAGE_ORDER[b._stage] || 0) - (STAGE_ORDER[a._stage] || 0);
+                          const sDiff = (STAGE_ORDER[b._stage] || 0) - (STAGE_ORDER[a._stage] || 0);
+                          if (sDiff !== 0) return sDiff;
+                          return (a.현장명 || '').localeCompare(b.현장명 || '', 'ko', { numeric: true });
                         });
                         return (
                           <React.Fragment key={row.name}>
