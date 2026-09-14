@@ -679,7 +679,8 @@
                 filterStage={filterStage} setFilterStage={setFilterStage}
                 sortBy={sortBy} setSortBy={setSortBy}
                 onEdit={(id) => { setSelectedId(id); setView('editor'); }}
-                onNew={() => { setSelectedId(null); setView('editor'); }} />
+                onNew={() => { setSelectedId(null); setView('editor'); }}
+                saveSite={saveSite} />
             ) : view === 'editor' ? (
               <SiteEditor site={selectedSite} onSave={saveSite} onDelete={deleteSite}
                 memoWidth={memoWidth} onMemoWidthChange={saveMemoWidth}
@@ -742,7 +743,7 @@
       );
     }
 
-    function SiteList({ sites, searchTerm, setSearchTerm, filterStage, setFilterStage, sortBy, setSortBy, onEdit, onNew }) {
+    function SiteList({ sites, searchTerm, setSearchTerm, filterStage, setFilterStage, sortBy, setSortBy, onEdit, onNew, saveSite }) {
       const filtered = useMemo(() => {
         const term = searchTerm.toLowerCase();
         const progressKeys = ['영업진행', '실사진행', '설계진행', '계약진행', '출하진행', '시공진행', '준공진행', '정산진행'];
