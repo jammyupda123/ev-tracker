@@ -359,6 +359,7 @@
       '투심 여부': '투심_여부', 'SID': 'SID', '계약 진행현황': '계약진행',
       'OPEN투자기안': 'OPEN투자기안', '충전소수정기안': '충전소수정기안',
       '출고기안': '출고기안', '철거기안': '철거기안', '정산기안': '정산기안', '착공예정일': '착공예정일',
+      '착공 완료': '착공_완료', '안전점검 완료': '안전점검_완료', '사용검사 완료': '사용검사_완료',
       '수요조사 작성': '수요조사_작성', '출하요청 기안': '출하요청_기안',
       '출하예정일': '출하예정일', '출하여부': '출하여부',
       '시공 과금형 수량': '시공_과금형_수량', '시공 과금형 제조사': '시공_과금형_제조사', '시공 과금형 모델명': '시공_과금형_모델명',
@@ -492,6 +493,7 @@
           '준공완료일자': s.준공완료일자 || '', '오픈일자': s.오픈일자 || '', '준공 진행현황': s.준공진행 || '',
           '무공해차 통합누리집 등록여부': s.누리집_등록여부 || '',
           '철거기안': s.철거기안 || '', '착공예정일': s.착공예정일 || '',
+          '착공 완료': s.착공_완료 || '', '안전점검 완료': s.안전점검_완료 || '', '사용검사 완료': s.사용검사_완료 || '',
           '정산기안': s.정산기안 || '', '정산 승인현황': s.정산진행 || '',
           '보조금 금액': s.보조금 ?? '', '보조금 신청일': s.보조금_신청일 || '', '보조금 지급일': s.보조금_지급일 || '',
           '공사 매출(원)': s.공사매출 ?? '', '공사 매입(원)': maipSum,
@@ -557,21 +559,32 @@
       const [selectedId, setSelectedId] = useState(null);
       const [loading, setLoading] = useState(true);
       const [searchTerm, setSearchTerm] = useState('');
-      const [filterStage, setFilterStage] = useState('전체');
-      const [sortBy, setSortBy] = useState('recent');
-      const [viewMode, setViewMode] = useState('grid');
+      const [filterStage, setFilterStage] = useState(null);
+      const [sortBy, setSortBy] = useState(null);
+      const [viewMode, setViewMode] = useState(null);
       const [memoWidth, setMemoWidth] = useState(224);
+      const [uiReady, setUiReady] = useState(false);
 
       useEffect(() => {
         db.collection('settings').doc('ui').get().then((doc) => {
           if (doc.exists) {
             const d = doc.data();
             if (d.memoWidth) setMemoWidth(d.memoWidth);
-            if (d.viewMode) setViewMode(d.viewMode);
-            if (d.sortBy) setSortBy(d.sortBy);
-            if (d.filterStage) setFilterStage(d.filterStage);
+            setViewMode(d.viewMode || 'grid');
+            setSortBy(d.sortBy || 'recent');
+            setFilterStage(d.filterStage || '전체');
+          } else {
+            setViewMode('grid');
+            setSortBy('recent');
+            setFilterStage('전체');
           }
-        }).catch(() => {});
+          setUiReady(true);
+        }).catch(() => {
+          setViewMode('grid');
+          setSortBy('recent');
+          setFilterStage('전체');
+          setUiReady(true);
+        });
       }, []);
 
       const saveUiSetting = (key, val) => {
@@ -683,7 +696,7 @@
           <Header view={view} setView={setView} onNew={() => { setSelectedId(null); setView('editor'); }}
             onExport={handleExport} onImport={handleImport} />
           <main className="max-w-7xl mx-auto px-6 py-8">
-            {loading ? (
+            {(loading || !uiReady) ? (
               <div className="text-center py-20 text-stone-500">불러오는 중…</div>
             ) : view === 'list' ? (
               <SiteList sites={sites} searchTerm={searchTerm} setSearchTerm={setSearchTerm}
@@ -874,9 +887,9 @@
     const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
     const fmtDateFull = (d) => { if (!d) return null; const dt = new Date(d); if (isNaN(dt)) return null; return `${d}(${DAY_NAMES[dt.getDay()]})`; };
     const SCHEDULE_DEFS = [
-      { key: '착공예정일', label: '착공' },
-      { key: '전기안전점검_예정일', label: '안전점검' },
-      { key: '사용검사_예정일', label: '사용검사' },
+      { key: '착공예정일', doneKey: '착공_완료', label: '착공' },
+      { key: '전기안전점검_예정일', doneKey: '안전점검_완료', label: '안전점검' },
+      { key: '사용검사_예정일', doneKey: '사용검사_완료', label: '사용검사' },
     ];
     function getDateStatus(dateStr) {
       if (!dateStr) return 'na';
@@ -924,16 +937,12 @@
       const kw = getTotalKw(site);
       const pRate = site._progressRate || 0;
       const [ctxMenu, setCtxMenu] = useState(null);
-      const [editingDate, setEditingDate] = useState(null);
-      const [dateVal, setDateVal] = useState('');
       useEffect(() => { if (ctxMenu) { const c = () => setCtxMenu(null); window.addEventListener('click', c); return () => window.removeEventListener('click', c); } }, [ctxMenu]);
       const GIAN_ROWS = [
         [{ key: 'OPEN투자기안', label: 'OPEN투자' }, { key: '충전소수정기안', label: '충전소수정' }],
         [{ key: '출고기안', label: '출고기안' }, { key: '철거기안', label: '철거기안' }],
         [{ key: '정산기안', label: '정산기안' }],
       ];
-      const startEdit = (key) => { setEditingDate(key); setDateVal(site[key] || ''); };
-      const saveDate = () => { if (editingDate) { onSave(cleanSite({ ...site, [editingDate]: dateVal })); setEditingDate(null); } };
       return (
         <div className="grid items-center px-5 py-3.5 border-b-2 border-stone-200 hover:bg-stone-50 transition-colors cursor-pointer relative" style={{ gridTemplateColumns: '2.5fr 0.6fr 1fr 1.2fr 2.2fr 1.8fr' }} onClick={onClick}>
           <div className="min-w-0">
@@ -966,25 +975,20 @@
           <div className="flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
             {SCHEDULE_DEFS.map((d) => {
               const st = getDateStatus(site[d.key]);
-              const isEditing = editingDate === d.key;
+              const isDone = site[d.doneKey] === 'O';
               const formatted = fmtDateFull(site[d.key]);
+              const dateRef = React.createRef();
               return (
                 <div key={d.key} className="flex items-center gap-2 text-[12px]">
-                  <span className="text-stone-500 font-medium" style={{ minWidth: '52px' }}>{d.label}</span>
-                  {isEditing ? (
-                    <div className="flex items-center gap-1">
-                      <input type="date" className="h-[26px] border border-blue-500 rounded px-1.5 text-[12px] num-mono bg-blue-50 focus:outline-none" style={{ width: '130px' }}
-                        value={dateVal} onChange={(e) => setDateVal(e.target.value)} autoFocus />
-                      <button onClick={saveDate} className="w-[24px] h-[24px] rounded bg-blue-500 text-white text-[12px] flex items-center justify-center hover:bg-blue-600">✓</button>
-                      <button onClick={() => setEditingDate(null)} className="w-[24px] h-[24px] rounded bg-stone-200 text-stone-600 text-[12px] flex items-center justify-center hover:bg-stone-300">✕</button>
-                    </div>
-                  ) : (
-                    <span className={`num-mono font-semibold cursor-pointer px-1.5 py-0.5 rounded border border-dashed border-transparent hover:border-stone-300 hover:bg-stone-50 transition-colors ${TL_TEXT[st]}`}
-                      onClick={() => startEdit(d.key)}
-                      title="클릭하여 편집">
-                      {formatted || <span className="text-stone-300">— 입력</span>}
-                    </span>
-                  )}
+                  <input type="checkbox" checked={isDone} onChange={(e) => onSave(cleanSite({ ...site, [d.doneKey]: e.target.checked ? 'O' : '' }))}
+                    className="w-3.5 h-3.5 rounded border-stone-300 text-slate-800 focus:ring-slate-800 cursor-pointer" />
+                  <span className={`font-medium ${isDone ? 'text-stone-800' : 'text-stone-500'}`} style={{ minWidth: '52px' }}>{d.label}</span>
+                  <span className={`num-mono font-semibold cursor-pointer px-1.5 py-0.5 rounded border border-dashed border-transparent hover:border-stone-300 hover:bg-stone-50 transition-colors ${isDone ? 'text-stone-800' : TL_TEXT[st]}`}
+                    onClick={() => dateRef.current && dateRef.current.showPicker()}>
+                    {formatted || <span className="text-stone-300">— 입력</span>}
+                  </span>
+                  <input ref={dateRef} type="date" className="sr-only" value={site[d.key] || ''}
+                    onChange={(e) => onSave(cleanSite({ ...site, [d.key]: e.target.value }))} />
                 </div>
               );
             })}
