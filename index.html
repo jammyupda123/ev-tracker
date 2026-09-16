@@ -570,18 +570,18 @@
           if (doc.exists) {
             const d = doc.data();
             if (d.memoWidth) setMemoWidth(d.memoWidth);
-            setViewMode(d.viewMode || 'grid');
-            setSortBy(d.sortBy || 'recent');
+            setViewMode(d.viewMode || 'list');
+            setSortBy(d.sortBy || 'progressHigh');
             setFilterStage(d.filterStage || '전체');
           } else {
-            setViewMode('grid');
-            setSortBy('recent');
+            setViewMode('list');
+            setSortBy('progressHigh');
             setFilterStage('전체');
           }
           setUiReady(true);
         }).catch(() => {
-          setViewMode('grid');
-          setSortBy('recent');
+          setViewMode('list');
+          setSortBy('progressHigh');
           setFilterStage('전체');
           setUiReady(true);
         });
