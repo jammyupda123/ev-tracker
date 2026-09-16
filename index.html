@@ -358,7 +358,7 @@
       '계약일': '계약일', '계약기간': '계약기간', 'OPEN 기안여부': 'OPEN_기안여부',
       '투심 여부': '투심_여부', 'SID': 'SID', '계약 진행현황': '계약진행',
       'OPEN투자기안': 'OPEN투자기안', '충전소수정기안': '충전소수정기안',
-      '발주기안': '발주기안', '철거기안': '철거기안', '정산기안': '정산기안', '착공예정일': '착공예정일',
+      '출고기안': '출고기안', '철거기안': '철거기안', '정산기안': '정산기안', '착공예정일': '착공예정일',
       '수요조사 작성': '수요조사_작성', '출하요청 기안': '출하요청_기안',
       '출하예정일': '출하예정일', '출하여부': '출하여부',
       '시공 과금형 수량': '시공_과금형_수량', '시공 과금형 제조사': '시공_과금형_제조사', '시공 과금형 모델명': '시공_과금형_모델명',
@@ -463,7 +463,7 @@
           'OPEN 기안여부': s.OPEN_기안여부 || '', '투심 여부': s.투심_여부 || '', 'SID': s.SID || '',
           'OPEN투자기안': s.OPEN투자기안 || '', '충전소수정기안': s.충전소수정기안 || '',
           '계약 진행현황': s.계약진행 || '',
-          '수요조사 작성': s.수요조사_작성 || '', '발주기안': s.발주기안 || '',
+          '수요조사 작성': s.수요조사_작성 || '', '출고기안': s.출고기안 || '',
           '출하예정일': s.출하예정일 || '', '출하여부': s.출하여부 || '',
           '시공 과금형 수량': s.시공_과금형_수량 ?? '', '시공 과금형 제조사': s.시공_과금형_제조사 || '', '시공 과금형 모델명': s.시공_과금형_모델명 || '',
           '시공 벽부 수량': s.시공_벽부_수량 ?? '', '시공 벽부 제조사': s.시공_벽부_제조사 || '', '시공 벽부 모델명': s.시공_벽부_모델명 || '',
@@ -847,7 +847,7 @@
             </div>
           ) : (
             <div className="bg-white border border-stone-200 rounded-lg overflow-hidden">
-              <div className="grid text-[11px] font-semibold text-stone-500 border-b border-stone-200 bg-stone-50 px-4 py-2" style={{ gridTemplateColumns: '2.5fr 0.7fr 1.2fr 1.5fr 2fr 1.5fr' }}>
+              <div className="grid text-[13px] font-semibold text-stone-600 border-b-2 border-stone-300 bg-stone-50 px-5 py-3 sticky top-0 z-10" style={{ gridTemplateColumns: '2.5fr 0.6fr 0.8fr 1.2fr 2.2fr 1.8fr' }}>
                 <div>현장명</div><div>단계</div><div>공정률</div><div>충전기·용량</div><div>기안</div><div>예정일</div>
               </div>
               {filtered.map((s) => <SiteListRow key={s.id} site={s} onClick={() => onEdit(s.id)} onSave={saveSite} />)}
@@ -896,7 +896,7 @@
     const GIAN_DEFS_STATIC = [
       { key: 'OPEN투자기안', label: 'OPEN투자' },
       { key: '충전소수정기안', label: '충전소수정' },
-      { key: '발주기안', label: '발주기안' },
+      { key: '출고기안', label: '출고기안' },
       { key: '철거기안', label: '철거기안' },
       { key: '정산기안', label: '정산기안' },
     ];
@@ -907,39 +907,53 @@
       const stage = site._stage || getAutoStage(site);
       const channels = getTotalChannels(site);
       const kw = getTotalKw(site);
-      const pRate = Math.round((site._progressRate || 0) * 100);
+      const pRate = site._progressRate || 0;
       const [ctxMenu, setCtxMenu] = useState(null);
       useEffect(() => { if (ctxMenu) { const c = () => setCtxMenu(null); window.addEventListener('click', c); return () => window.removeEventListener('click', c); } }, [ctxMenu]);
       const fmt = (d) => { if (!d) return '—'; const p = d.split('-'); return `${p[1]}/${p[2]}`; };
+      const GIAN_ROWS = [
+        [{ key: 'OPEN투자기안', label: 'OPEN투자' }, { key: '충전소수정기안', label: '충전소수정' }],
+        [{ key: '출고기안', label: '출고기안' }, { key: '철거기안', label: '철거기안' }],
+        [{ key: '정산기안', label: '정산기안' }],
+      ];
       return (
-        <div className="grid items-center px-4 py-3 border-b border-stone-100 hover:bg-stone-50 transition-colors cursor-pointer relative" style={{ gridTemplateColumns: '2.5fr 0.7fr 1.2fr 1.5fr 2fr 1.5fr' }} onClick={onClick}>
+        <div className="grid items-center px-5 py-3.5 border-b border-stone-100 hover:bg-stone-50 transition-colors cursor-pointer relative" style={{ gridTemplateColumns: '2.5fr 0.6fr 0.8fr 1.2fr 2.2fr 1.8fr' }} onClick={onClick}>
           <div className="min-w-0">
-            <div className="text-[10px] text-stone-400 truncate mb-0.5">영업 {site.HEV영업담당자 || '미배정'} · 시공 {site.시공사 || '미배정'}</div>
-            <div className="text-sm font-semibold text-stone-900 truncate">{site.현장명 || '(이름 없음)'}</div>
-            <div className="text-[10px] text-stone-500">{site.지역 || '—'} · {site.건물유형 || '—'}</div>
+            <div className="text-[12px] text-stone-500 truncate mb-1">영업 {site.HEV영업담당자 || '미배정'} · 시공 {site.시공사 || '미배정'}</div>
+            <div className="text-[14px] font-semibold text-stone-900 truncate leading-snug">{site.현장명 || '(이름 없음)'}</div>
+            <div className="text-[12px] text-stone-500 mt-0.5">{site.지역 || '—'} · {site.건물유형 || '—'}</div>
           </div>
-          <div>{stage && <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded border ${STAGE_BADGE_COLORS[stage] || ''}`}>{stage}</span>}</div>
+          <div>{stage && <span className={`px-2 py-0.5 text-[11px] font-medium rounded border ${STAGE_BADGE_COLORS[stage] || ''}`}>{stage}</span>}</div>
           <div>
-            <div className="flex gap-0.5 mb-1">{(site._statuses || getProgress(site).statuses).map((s) => <div key={s.key} className={`flex-1 h-1 rounded-sm ${PROGRESS_COLOR_MAP[s.status]}`} />)}</div>
-            <span className="text-xs font-bold num-mono">{pRate}%</span>
+            <div className="flex gap-0.5 mb-1">{(site._statuses || getProgress(site).statuses).map((s) => <div key={s.key} className={`flex-1 h-1.5 rounded-sm ${PROGRESS_COLOR_MAP[s.status]}`} />)}</div>
+            <span className="text-[13px] font-bold num-mono">{pRate}%</span>
           </div>
-          <div className="text-xs text-stone-600"><strong className="num-mono">{channels || 0}</strong> CH · <strong className="num-mono">{kw || 0}</strong> kW</div>
-          <div className="flex gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
-            {GIAN_DEFS_STATIC.map((g) => {
-              const val = site[g.key] || '미작성';
-              return (
-                <span key={g.key} className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium cursor-pointer hover:ring-1 hover:ring-slate-400 ${GIAN_CLS_STATIC[val] || GIAN_CLS_STATIC['미작성']}`}
-                  onClick={() => { if (val !== '작성완료') onSave({ ...site, [g.key]: '작성완료' }); }}
-                  onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ key: g.key, x: e.clientX, y: e.clientY }); }}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${GIAN_DOT_STATIC[val] || GIAN_DOT_STATIC['미작성']}`} />{g.label}
-                </span>
-              );
-            })}
+          <div className="text-[13px] text-stone-600"><strong className="num-mono">{channels || 0}</strong> CH · <strong className="num-mono">{kw || 0}</strong> kW</div>
+          <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+            {GIAN_ROWS.map((row, ri) => (
+              <div key={ri} className="flex gap-1">
+                {row.map((g) => {
+                  const val = site[g.key] || '미작성';
+                  return (
+                    <span key={g.key} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium cursor-pointer hover:ring-1 hover:ring-slate-400 ${GIAN_CLS_STATIC[val] || GIAN_CLS_STATIC['미작성']}`}
+                      onClick={() => { if (val !== '작성완료') onSave({ ...site, [g.key]: '작성완료' }); }}
+                      onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ key: g.key, x: e.clientX, y: e.clientY }); }}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${GIAN_DOT_STATIC[val] || GIAN_DOT_STATIC['미작성']}`} />{g.label}
+                    </span>
+                  );
+                })}
+              </div>
+            ))}
           </div>
-          <div className="flex gap-3 text-[10px]">
+          <div className="flex flex-col gap-1.5">
             {SCHEDULE_DEFS.map((d) => {
               const st = getDateStatus(site[d.key]);
-              return <span key={d.key} className={`num-mono font-medium ${TL_TEXT[st]}`} title={d.label}>{fmt(site[d.key])}</span>;
+              return (
+                <div key={d.key} className="flex items-center gap-2 text-[12px]">
+                  <span className="text-stone-500 font-medium" style={{ minWidth: '52px' }}>{d.label}</span>
+                  <span className={`num-mono font-semibold ${TL_TEXT[st]}`}>{fmt(site[d.key])}</span>
+                </div>
+              );
             })}
           </div>
           {ctxMenu && (
@@ -984,13 +998,10 @@
       const { statuses, nextAction, actionType, progressRate } = getProgress(site);
       const [contextMenu, setContextMenu] = useState(null);
 
-      const GIAN_DEFS = [
-        { key: 'OPEN투자기안', label: 'OPEN투자' },
-        { key: '충전소수정기안', label: '충전소수정' },
-        { sep: true },
-        { key: '발주기안', label: '발주기안' },
-        { key: '철거기안', label: '철거기안' },
-        { key: '정산기안', label: '정산기안' },
+      const GIAN_ROWS = [
+        [{ key: 'OPEN투자기안', label: 'OPEN투자' }, { key: '충전소수정기안', label: '충전소수정' }],
+        [{ key: '출고기안', label: '출고기안' }, { key: '철거기안', label: '철거기안' }],
+        [{ key: '정산기안', label: '정산기안' }],
       ];
       const GIAN_CLS = { '작성완료': 'bg-emerald-50 text-emerald-700 border-emerald-200', '미작성': 'bg-amber-50 text-amber-700 border-amber-200', '해당없음': 'bg-stone-50 text-stone-400 border-stone-200' };
       const GIAN_DOT = { '작성완료': 'bg-emerald-500', '미작성': 'bg-amber-500', '해당없음': 'bg-stone-300' };
@@ -1064,23 +1075,26 @@
           </div>
           </div>
 
-          <div className="flex gap-1 flex-wrap mt-3 pt-3 border-t border-stone-100">
-            {GIAN_DEFS.map((g, i) => {
-              if (g.sep) return <div key={i} className="w-px h-4 bg-stone-200 self-center mx-0.5" />;
-              const val = site[g.key] || '미작성';
-              const cls = GIAN_CLS[val] || GIAN_CLS['미작성'];
-              const dot = GIAN_DOT[val] || GIAN_DOT['미작성'];
-              return (
-                <span key={g.key}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium border cursor-pointer select-none transition-colors hover:ring-1 hover:ring-slate-400 ${cls}`}
-                  onClick={(e) => handleGianClick(e, g.key)}
-                  onContextMenu={(e) => handleGianContext(e, g.key)}
-                  title={`${g.label}: ${val} (클릭=완료, 우클릭=변경)`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
-                  {g.label}
-                </span>
-              );
-            })}
+          <div className="flex flex-col gap-1 mt-3 pt-3 border-t border-stone-100">
+            {GIAN_ROWS.map((row, ri) => (
+              <div key={ri} className="flex gap-1">
+                {row.map((g) => {
+                  const val = site[g.key] || '미작성';
+                  const cls = GIAN_CLS[val] || GIAN_CLS['미작성'];
+                  const dot = GIAN_DOT[val] || GIAN_DOT['미작성'];
+                  return (
+                    <span key={g.key}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium border cursor-pointer select-none transition-colors hover:ring-1 hover:ring-slate-400 ${cls}`}
+                      onClick={(e) => handleGianClick(e, g.key)}
+                      onContextMenu={(e) => handleGianContext(e, g.key)}
+                      title={`${g.label}: ${val} (클릭=완료, 우클릭=변경)`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+                      {g.label}
+                    </span>
+                  );
+                })}
+              </div>
+            ))}
           </div>
 
           <ScheduleTimeline site={site} />
@@ -1582,7 +1596,7 @@
           <FormSection title="출하">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Field label="수요조사 작성"><TextInput value={draft.수요조사_작성} onChange={(v) => update('수요조사_작성', v)} placeholder="예: 완료" /></Field>
-              <Field label="발주기안"><Select value={draft.발주기안} onChange={(v) => update('발주기안', v)} options={ENUMS.기안상태} /></Field>
+              <Field label="출고기안"><Select value={draft.출고기안} onChange={(v) => update('출고기안', v)} options={ENUMS.기안상태} /></Field>
               <Field label="출하예정일"><TextInput type="date" value={draft.출하예정일} onChange={(v) => update('출하예정일', v)} /></Field>
               <Field label="출하여부"><TextInput value={draft.출하여부} onChange={(v) => update('출하여부', v)} /></Field>
             </div>
