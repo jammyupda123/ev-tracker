@@ -884,8 +884,8 @@
             <div key={item.key} className="flex-1 text-center relative">
               {i < items.length && <div className="absolute top-[7px] left-0 right-0 h-[2px] bg-stone-200 z-0" style={i === 0 ? { left: '50%' } : i === items.length - 1 ? { right: '50%' } : {}} />}
               <div className={`w-[10px] h-[10px] rounded-full border-2 mx-auto relative z-10 ${TL_DOT[item.status]}`} />
-              <div className="text-[10px] text-stone-500 mt-1">{item.label}</div>
-              <div className={`text-[10px] font-semibold num-mono ${TL_TEXT[item.status]}`}>{fmt(item.date)}</div>
+              <div className="text-[11px] text-stone-500 mt-1">{item.label}</div>
+              <div className={`text-[11px] font-semibold num-mono ${TL_TEXT[item.status]}`}>{fmt(item.date)}</div>
             </div>
           ))}
         </div>
@@ -1090,7 +1090,7 @@
               const dot = GIAN_DOT[val] || GIAN_DOT['미작성'];
               return (
                 <span key={g.key}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium border cursor-pointer select-none transition-colors hover:ring-1 hover:ring-slate-400 ${cls}`}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[12px] font-medium border cursor-pointer select-none transition-colors hover:ring-1 hover:ring-slate-400 ${cls}`}
                   onClick={(e) => handleGianClick(e, g.key)}
                   onContextMenu={(e) => handleGianContext(e, g.key)}
                   title={`${g.label}: ${val} (클릭=완료, 우클릭=변경)`}>
