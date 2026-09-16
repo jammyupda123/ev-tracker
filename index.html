@@ -744,6 +744,7 @@
     }
 
     function SiteList({ sites, searchTerm, setSearchTerm, filterStage, setFilterStage, sortBy, setSortBy, onEdit, onNew, saveSite }) {
+      const [viewMode, setViewMode] = useState('grid');
       const filtered = useMemo(() => {
         const term = searchTerm.toLowerCase();
         const progressKeys = ['영업진행', '실사진행', '설계진행', '계약진행', '출하진행', '시공진행', '준공진행', '정산진행'];
@@ -753,6 +754,7 @@
             ...s,
             _stage: getAutoStage(s),
             _progressRate: prog.progressRate,
+            _statuses: prog.statuses,
             _hasProblem: prog.statuses.some((st) => st.status === 'problem'),
             _hasHold: progressKeys.some((k) => s[k] === '보류'),
             _hasCancel: progressKeys.some((k) => s[k] === '취소'),
@@ -823,13 +825,131 @@
                 <option value="progressHigh">공정률 높은 순</option>
               </select>
             </div>
+            <div className="flex ml-auto border border-stone-300 rounded overflow-hidden">
+              <button onClick={() => setViewMode('grid')}
+                className={`px-3 py-1.5 text-xs flex items-center gap-1.5 transition-colors ${viewMode === 'grid' ? 'bg-slate-800 text-white' : 'bg-white text-stone-600 hover:bg-stone-50'}`}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                그리드
+              </button>
+              <button onClick={() => setViewMode('list')}
+                className={`px-3 py-1.5 text-xs flex items-center gap-1.5 border-l border-stone-300 transition-colors ${viewMode === 'list' ? 'bg-slate-800 text-white' : 'bg-white text-stone-600 hover:bg-stone-50'}`}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                리스트
+              </button>
+            </div>
           </div>
 
           {filtered.length === 0 ? (
             <EmptyState onNew={onNew} hasData={sites.length > 0} />
-          ) : (
+          ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filtered.map((s) => <SiteCard key={s.id} site={s} onClick={() => onEdit(s.id)} onSave={saveSite} />)}
+            </div>
+          ) : (
+            <div className="bg-white border border-stone-200 rounded-lg overflow-hidden">
+              <div className="grid text-[11px] font-semibold text-stone-500 border-b border-stone-200 bg-stone-50 px-4 py-2" style={{ gridTemplateColumns: '2.5fr 0.7fr 1.2fr 1.5fr 2fr 1.5fr' }}>
+                <div>현장명</div><div>단계</div><div>공정률</div><div>충전기·용량</div><div>기안</div><div>예정일</div>
+              </div>
+              {filtered.map((s) => <SiteListRow key={s.id} site={s} onClick={() => onEdit(s.id)} onSave={saveSite} />)}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // 미니 타임라인 헬퍼
+    const SCHEDULE_DEFS = [
+      { key: '착공예정일', label: '착공' },
+      { key: '전기안전점검_예정일', label: '안전점검' },
+      { key: '사용검사_예정일', label: '사용검사' },
+    ];
+    function getDateStatus(dateStr) {
+      if (!dateStr) return 'na';
+      const d = new Date(dateStr);
+      const today = new Date(); today.setHours(0,0,0,0);
+      const diff = Math.ceil((d - today) / 86400000);
+      if (diff < 0) return 'overdue';
+      if (diff <= 7) return 'soon';
+      return 'future';
+    }
+    const TL_DOT = { future: 'bg-blue-200 border-blue-500', soon: 'bg-amber-200 border-amber-500', overdue: 'bg-red-200 border-red-500', na: 'bg-stone-200 border-stone-300' };
+    const TL_TEXT = { future: 'text-stone-700', soon: 'text-amber-600', overdue: 'text-red-600', na: 'text-stone-400' };
+    function ScheduleTimeline({ site }) {
+      const items = SCHEDULE_DEFS.map((d) => ({ ...d, date: site[d.key], status: getDateStatus(site[d.key]) }));
+      if (items.every((i) => i.status === 'na')) return null;
+      const fmt = (d) => { if (!d) return '—'; const p = d.split('-'); return `${p[1]}/${p[2]}`; };
+      return (
+        <div className="flex mt-2 pt-2 border-t border-stone-100">
+          {items.map((item, i) => (
+            <div key={item.key} className="flex-1 text-center relative">
+              {i < items.length && <div className="absolute top-[7px] left-0 right-0 h-[2px] bg-stone-200 z-0" style={i === 0 ? { left: '50%' } : i === items.length - 1 ? { right: '50%' } : {}} />}
+              <div className={`w-[10px] h-[10px] rounded-full border-2 mx-auto relative z-10 ${TL_DOT[item.status]}`} />
+              <div className="text-[9px] text-stone-500 mt-1">{item.label}</div>
+              <div className={`text-[9px] font-semibold num-mono ${TL_TEXT[item.status]}`}>{fmt(item.date)}</div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // 리스트뷰 행
+    const GIAN_DEFS_STATIC = [
+      { key: 'OPEN투자기안', label: 'OPEN투자' },
+      { key: '충전소수정기안', label: '충전소수정' },
+      { key: '발주기안', label: '발주기안' },
+      { key: '철거기안', label: '철거기안' },
+      { key: '정산기안', label: '정산기안' },
+    ];
+    const GIAN_CLS_STATIC = { '작성완료': 'bg-emerald-50 text-emerald-700', '미작성': 'bg-amber-50 text-amber-700', '해당없음': 'bg-stone-50 text-stone-400' };
+    const GIAN_DOT_STATIC = { '작성완료': 'bg-emerald-500', '미작성': 'bg-amber-500', '해당없음': 'bg-stone-300' };
+
+    function SiteListRow({ site, onClick, onSave }) {
+      const stage = site._stage || getAutoStage(site);
+      const channels = getTotalChannels(site);
+      const kw = getTotalKw(site);
+      const pRate = Math.round((site._progressRate || 0) * 100);
+      const [ctxMenu, setCtxMenu] = useState(null);
+      useEffect(() => { if (ctxMenu) { const c = () => setCtxMenu(null); window.addEventListener('click', c); return () => window.removeEventListener('click', c); } }, [ctxMenu]);
+      const fmt = (d) => { if (!d) return '—'; const p = d.split('-'); return `${p[1]}/${p[2]}`; };
+      return (
+        <div className="grid items-center px-4 py-3 border-b border-stone-100 hover:bg-stone-50 transition-colors cursor-pointer relative" style={{ gridTemplateColumns: '2.5fr 0.7fr 1.2fr 1.5fr 2fr 1.5fr' }} onClick={onClick}>
+          <div className="min-w-0">
+            <div className="text-[10px] text-stone-400 truncate mb-0.5">영업 {site.HEV영업담당자 || '미배정'} · 시공 {site.시공사 || '미배정'}</div>
+            <div className="text-sm font-semibold text-stone-900 truncate">{site.현장명 || '(이름 없음)'}</div>
+            <div className="text-[10px] text-stone-500">{site.지역 || '—'} · {site.건물유형 || '—'}</div>
+          </div>
+          <div>{stage && <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded border ${STAGE_BADGE_COLORS[stage] || ''}`}>{stage}</span>}</div>
+          <div>
+            <div className="flex gap-0.5 mb-1">{(site._statuses || getProgress(site).statuses).map((s) => <div key={s.key} className={`flex-1 h-1 rounded-sm ${PROGRESS_COLOR_MAP[s.status]}`} />)}</div>
+            <span className="text-xs font-bold num-mono">{pRate}%</span>
+          </div>
+          <div className="text-xs text-stone-600"><strong className="num-mono">{channels || 0}</strong> CH · <strong className="num-mono">{kw || 0}</strong> kW</div>
+          <div className="flex gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+            {GIAN_DEFS_STATIC.map((g) => {
+              const val = site[g.key] || '미작성';
+              return (
+                <span key={g.key} className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium cursor-pointer hover:ring-1 hover:ring-slate-400 ${GIAN_CLS_STATIC[val] || GIAN_CLS_STATIC['미작성']}`}
+                  onClick={() => { if (val !== '작성완료') onSave({ ...site, [g.key]: '작성완료' }); }}
+                  onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ key: g.key, x: e.clientX, y: e.clientY }); }}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${GIAN_DOT_STATIC[val] || GIAN_DOT_STATIC['미작성']}`} />{g.label}
+                </span>
+              );
+            })}
+          </div>
+          <div className="flex gap-3 text-[10px]">
+            {SCHEDULE_DEFS.map((d) => {
+              const st = getDateStatus(site[d.key]);
+              return <span key={d.key} className={`num-mono font-medium ${TL_TEXT[st]}`} title={d.label}>{fmt(site[d.key])}</span>;
+            })}
+          </div>
+          {ctxMenu && (
+            <div className="fixed bg-white border border-stone-200 rounded-lg shadow-lg py-1 z-50" style={{ left: ctxMenu.x, top: ctxMenu.y }}>
+              {['미작성', '작성완료', '해당없음'].map((v) => (
+                <button key={v} onClick={(e) => { e.stopPropagation(); onSave({ ...site, [ctxMenu.key]: v }); setCtxMenu(null); }}
+                  className="block w-full text-left px-4 py-1.5 text-xs hover:bg-stone-50">
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full mr-2 ${GIAN_DOT_STATIC[v]}`} />{v}
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -962,6 +1082,8 @@
               );
             })}
           </div>
+
+          <ScheduleTimeline site={site} />
 
           {contextMenu && (
             <div className="fixed bg-white border border-stone-200 rounded-lg shadow-lg py-1 z-50" style={{ left: contextMenu.x, top: contextMenu.y }}>
