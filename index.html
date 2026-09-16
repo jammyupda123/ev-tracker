@@ -555,6 +555,18 @@
 
     function AppContent() {
       const [view, setView] = useState('list');
+      const scrollPosRef = React.useRef(0);
+      const goToEditor = (id) => {
+        scrollPosRef.current = window.scrollY;
+        setSelectedId(id);
+        setView('editor');
+        setTimeout(() => window.scrollTo(0, 0), 0);
+      };
+      const goToList = () => {
+        setView('list');
+        setSelectedId(null);
+        setTimeout(() => window.scrollTo(0, scrollPosRef.current), 0);
+      };
       const [sites, setSites] = useState([]);
       const [selectedId, setSelectedId] = useState(null);
       const [loading, setLoading] = useState(true);
@@ -634,8 +646,7 @@
         if (!confirm('정말 삭제하시겠습니까? 되돌릴 수 없습니다.')) return;
         try {
           await db.collection('sites').doc(id).delete();
-          setView('list');
-          setSelectedId(null);
+          goToList();
         } catch (e) {
           console.error('delete error', e);
           alert('삭제 실패: ' + e.message);
@@ -693,7 +704,7 @@
 
       return (
         <div className="min-h-screen bg-stone-50">
-          <Header view={view} setView={setView} onNew={() => { setSelectedId(null); setView('editor'); }}
+          <Header view={view} setView={setView} onNew={() => goToEditor(null)}
             onExport={handleExport} onImport={handleImport} />
           <main className="max-w-7xl mx-auto px-6 py-8">
             {(loading || !uiReady) ? (
@@ -703,16 +714,16 @@
                 filterStage={filterStage} setFilterStage={(v) => { setFilterStage(v); saveUiSetting('filterStage', v); }}
                 sortBy={sortBy} setSortBy={(v) => { setSortBy(v); saveUiSetting('sortBy', v); }}
                 viewMode={viewMode} setViewMode={(v) => { setViewMode(v); saveUiSetting('viewMode', v); }}
-                onEdit={(id) => { setSelectedId(id); setView('editor'); }}
-                onNew={() => { setSelectedId(null); setView('editor'); }}
+                onEdit={(id) => goToEditor(id)}
+                onNew={() => goToEditor(null)}
                 saveSite={saveSite} />
             ) : view === 'editor' ? (
               <SiteEditor site={selectedSite} onSave={saveSite} onDelete={deleteSite}
                 memoWidth={memoWidth} onMemoWidthChange={saveMemoWidth}
-                onCopy={(copyData) => { setSelectedId(null); setView('editor'); setTimeout(() => { window.__copyDraft = copyData; window.dispatchEvent(new Event('pasteCopy')); }, 50); }}
-                onCancel={() => { setView('list'); setSelectedId(null); }} />
+                onCopy={(copyData) => { setSelectedId(null); setView('editor'); setTimeout(() => { window.__copyDraft = copyData; window.dispatchEvent(new Event('pasteCopy')); window.scrollTo(0, 0); }, 50); }}
+                onCancel={goToList} />
             ) : (
-              <Dashboard sites={sites} onEditFromDashboard={(id) => { setSelectedId(id); setView('editor'); }} />
+              <Dashboard sites={sites} onEditFromDashboard={(id) => goToEditor(id)} />
             )}
           </main>
         </div>
