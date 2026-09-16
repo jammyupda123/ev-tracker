@@ -559,6 +559,7 @@
       const [searchTerm, setSearchTerm] = useState('');
       const [filterStage, setFilterStage] = useState('전체');
       const [sortBy, setSortBy] = useState('recent');
+      const [viewMode, setViewMode] = useState('grid');
       const [memoWidth, setMemoWidth] = useState(224);
 
       useEffect(() => {
@@ -678,6 +679,7 @@
               <SiteList sites={sites} searchTerm={searchTerm} setSearchTerm={setSearchTerm}
                 filterStage={filterStage} setFilterStage={setFilterStage}
                 sortBy={sortBy} setSortBy={setSortBy}
+                viewMode={viewMode} setViewMode={setViewMode}
                 onEdit={(id) => { setSelectedId(id); setView('editor'); }}
                 onNew={() => { setSelectedId(null); setView('editor'); }}
                 saveSite={saveSite} />
@@ -743,8 +745,7 @@
       );
     }
 
-    function SiteList({ sites, searchTerm, setSearchTerm, filterStage, setFilterStage, sortBy, setSortBy, onEdit, onNew, saveSite }) {
-      const [viewMode, setViewMode] = useState('grid');
+    function SiteList({ sites, searchTerm, setSearchTerm, filterStage, setFilterStage, sortBy, setSortBy, viewMode, setViewMode, onEdit, onNew, saveSite }) {
       const filtered = useMemo(() => {
         const term = searchTerm.toLowerCase();
         const progressKeys = ['영업진행', '실사진행', '설계진행', '계약진행', '출하진행', '시공진행', '준공진행', '정산진행'];
@@ -858,6 +859,10 @@
     }
 
     // 미니 타임라인 헬퍼
+    const COMPUTED_KEYS = new Set(['_stage', '_progressRate', '_statuses', '_hasProblem', '_hasHold', '_hasCancel']);
+    const cleanSite = (s) => { const c = {}; Object.keys(s).forEach((k) => { if (!COMPUTED_KEYS.has(k)) c[k] = s[k]; }); return c; };
+    const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+    const fmtDateFull = (d) => { if (!d) return null; const dt = new Date(d); if (isNaN(dt)) return null; return `${d}(${DAY_NAMES[dt.getDay()]})`; };
     const SCHEDULE_DEFS = [
       { key: '착공예정일', label: '착공' },
       { key: '전기안전점검_예정일', label: '안전점검' },
@@ -877,15 +882,15 @@
     function ScheduleTimeline({ site }) {
       const items = SCHEDULE_DEFS.map((d) => ({ ...d, date: site[d.key], status: getDateStatus(site[d.key]) }));
       if (items.every((i) => i.status === 'na')) return null;
-      const fmt = (d) => { if (!d) return '—'; const p = d.split('-'); return `${p[1]}/${p[2]}`; };
+      const fmt = (d) => { if (!d) return '—'; const dt = new Date(d); if (isNaN(dt)) return '—'; const p = d.split('-'); return `${p[1]}/${p[2]}(${DAY_NAMES[dt.getDay()]})`; };
       return (
         <div className="flex mt-2 pt-2 border-t border-stone-100">
           {items.map((item, i) => (
             <div key={item.key} className="flex-1 text-center relative">
               {i < items.length && <div className="absolute top-[7px] left-0 right-0 h-[2px] bg-stone-200 z-0" style={i === 0 ? { left: '50%' } : i === items.length - 1 ? { right: '50%' } : {}} />}
               <div className={`w-[10px] h-[10px] rounded-full border-2 mx-auto relative z-10 ${TL_DOT[item.status]}`} />
-              <div className="text-[11px] text-stone-500 mt-1">{item.label}</div>
-              <div className={`text-[11px] font-semibold num-mono ${TL_TEXT[item.status]}`}>{fmt(item.date)}</div>
+              <div className="text-[12px] text-stone-500 mt-1">{item.label}</div>
+              <div className={`text-[12px] font-semibold num-mono ${TL_TEXT[item.status]}`}>{fmt(item.date)}</div>
             </div>
           ))}
         </div>
@@ -909,13 +914,16 @@
       const kw = getTotalKw(site);
       const pRate = site._progressRate || 0;
       const [ctxMenu, setCtxMenu] = useState(null);
+      const [editingDate, setEditingDate] = useState(null);
+      const [dateVal, setDateVal] = useState('');
       useEffect(() => { if (ctxMenu) { const c = () => setCtxMenu(null); window.addEventListener('click', c); return () => window.removeEventListener('click', c); } }, [ctxMenu]);
-      const fmt = (d) => { if (!d) return '—'; const p = d.split('-'); return `${p[1]}/${p[2]}`; };
       const GIAN_ROWS = [
         [{ key: 'OPEN투자기안', label: 'OPEN투자' }, { key: '충전소수정기안', label: '충전소수정' }],
         [{ key: '출고기안', label: '출고기안' }, { key: '철거기안', label: '철거기안' }],
         [{ key: '정산기안', label: '정산기안' }],
       ];
+      const startEdit = (key) => { setEditingDate(key); setDateVal(site[key] || ''); };
+      const saveDate = () => { if (editingDate) { onSave(cleanSite({ ...site, [editingDate]: dateVal })); setEditingDate(null); } };
       return (
         <div className="grid items-center px-5 py-3.5 border-b border-stone-100 hover:bg-stone-50 transition-colors cursor-pointer relative" style={{ gridTemplateColumns: '2.5fr 0.6fr 0.8fr 1.2fr 2.2fr 1.8fr' }} onClick={onClick}>
           <div className="min-w-0">
@@ -936,7 +944,7 @@
                   const val = site[g.key] || '미작성';
                   return (
                     <span key={g.key} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium cursor-pointer hover:ring-1 hover:ring-slate-400 ${GIAN_CLS_STATIC[val] || GIAN_CLS_STATIC['미작성']}`}
-                      onClick={() => { if (val !== '작성완료') onSave({ ...site, [g.key]: '작성완료' }); }}
+                      onClick={() => { if (val !== '작성완료') onSave(cleanSite({ ...site, [g.key]: '작성완료' })); }}
                       onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ key: g.key, x: e.clientX, y: e.clientY }); }}>
                       <span className={`w-1.5 h-1.5 rounded-full ${GIAN_DOT_STATIC[val] || GIAN_DOT_STATIC['미작성']}`} />{g.label}
                     </span>
@@ -945,13 +953,28 @@
               </div>
             ))}
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
             {SCHEDULE_DEFS.map((d) => {
               const st = getDateStatus(site[d.key]);
+              const isEditing = editingDate === d.key;
+              const formatted = fmtDateFull(site[d.key]);
               return (
                 <div key={d.key} className="flex items-center gap-2 text-[12px]">
                   <span className="text-stone-500 font-medium" style={{ minWidth: '52px' }}>{d.label}</span>
-                  <span className={`num-mono font-semibold ${TL_TEXT[st]}`}>{fmt(site[d.key])}</span>
+                  {isEditing ? (
+                    <div className="flex items-center gap-1">
+                      <input type="date" className="h-[26px] border border-blue-500 rounded px-1.5 text-[12px] num-mono bg-blue-50 focus:outline-none" style={{ width: '130px' }}
+                        value={dateVal} onChange={(e) => setDateVal(e.target.value)} autoFocus />
+                      <button onClick={saveDate} className="w-[24px] h-[24px] rounded bg-blue-500 text-white text-[12px] flex items-center justify-center hover:bg-blue-600">✓</button>
+                      <button onClick={() => setEditingDate(null)} className="w-[24px] h-[24px] rounded bg-stone-200 text-stone-600 text-[12px] flex items-center justify-center hover:bg-stone-300">✕</button>
+                    </div>
+                  ) : (
+                    <span className={`num-mono font-semibold cursor-pointer px-1.5 py-0.5 rounded border border-dashed border-transparent hover:border-stone-300 hover:bg-stone-50 transition-colors ${TL_TEXT[st]}`}
+                      onClick={() => startEdit(d.key)}
+                      title="클릭하여 편집">
+                      {formatted || <span className="text-stone-300">— 입력</span>}
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -959,7 +982,7 @@
           {ctxMenu && (
             <div className="fixed bg-white border border-stone-200 rounded-lg shadow-lg py-1 z-50" style={{ left: ctxMenu.x, top: ctxMenu.y }}>
               {['미작성', '작성완료', '해당없음'].map((v) => (
-                <button key={v} onClick={(e) => { e.stopPropagation(); onSave({ ...site, [ctxMenu.key]: v }); setCtxMenu(null); }}
+                <button key={v} onClick={(e) => { e.stopPropagation(); onSave(cleanSite({ ...site, [ctxMenu.key]: v })); setCtxMenu(null); }}
                   className="block w-full text-left px-4 py-1.5 text-xs hover:bg-stone-50">
                   <span className={`inline-block w-1.5 h-1.5 rounded-full mr-2 ${GIAN_DOT_STATIC[v]}`} />{v}
                 </button>
@@ -1010,7 +1033,7 @@
         e.stopPropagation();
         const current = site[key] || '미작성';
         if (current !== '작성완료') {
-          onSave({ ...site, [key]: '작성완료' });
+          onSave(cleanSite({ ...site, [key]: '작성완료' }));
         }
       };
       const handleGianContext = (e, key) => {
@@ -1020,7 +1043,7 @@
       };
       const handleGianSet = (val) => {
         if (contextMenu) {
-          onSave({ ...site, [contextMenu.key]: val });
+          onSave(cleanSite({ ...site, [contextMenu.key]: val }));
           setContextMenu(null);
         }
       };
