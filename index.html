@@ -884,8 +884,8 @@
             <div key={item.key} className="flex-1 text-center relative">
               {i < items.length && <div className="absolute top-[7px] left-0 right-0 h-[2px] bg-stone-200 z-0" style={i === 0 ? { left: '50%' } : i === items.length - 1 ? { right: '50%' } : {}} />}
               <div className={`w-[10px] h-[10px] rounded-full border-2 mx-auto relative z-10 ${TL_DOT[item.status]}`} />
-              <div className="text-[9px] text-stone-500 mt-1">{item.label}</div>
-              <div className={`text-[9px] font-semibold num-mono ${TL_TEXT[item.status]}`}>{fmt(item.date)}</div>
+              <div className="text-[10px] text-stone-500 mt-1">{item.label}</div>
+              <div className={`text-[10px] font-semibold num-mono ${TL_TEXT[item.status]}`}>{fmt(item.date)}</div>
             </div>
           ))}
         </div>
@@ -1037,25 +1037,25 @@
         <div className="bg-white border border-stone-200 rounded-lg p-5 text-left hover:border-slate-800 hover:shadow-sm transition-all relative">
           <div className="cursor-pointer" onClick={onClick}>
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3 text-[11px] text-stone-500">
+            <div className="flex items-center gap-3 text-[12px] text-stone-500">
               <span className="truncate">영업 <span className="font-medium text-stone-700">{site.HEV영업담당자 || '미배정'}</span></span>
               <span className="text-stone-300">|</span>
               <span className="truncate">시공 <span className="font-medium text-stone-700">{site.시공사 || '미배정'}</span></span>
             </div>
-            {site.투자유형 && <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 border border-stone-200">{site.투자유형}</span>}
+            {site.투자유형 && <span className="shrink-0 text-[11px] font-medium px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 border border-stone-200">{site.투자유형}</span>}
           </div>
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-stone-900 truncate">{site.현장명 || '(이름 없음)'}</h3>
-              <p className="text-xs text-stone-500 mt-0.5 truncate">{site.지역 || '—'} · {site.건물유형 || '—'}</p>
+              <h3 className="text-[15px] font-semibold text-stone-900 truncate">{site.현장명 || '(이름 없음)'}</h3>
+              <p className="text-[12px] text-stone-500 mt-0.5 truncate">{site.지역 || '—'} · {site.건물유형 || '—'}</p>
             </div>
-            {stage && <span className={`shrink-0 px-2 py-0.5 text-xs font-medium rounded border ${STAGE_BADGE_COLORS[stage]}`}>{stage}</span>}
+            {stage && <span className={`shrink-0 px-2 py-0.5 text-[12px] font-medium rounded border ${STAGE_BADGE_COLORS[stage]}`}>{stage}</span>}
           </div>
 
           <div className="mb-3">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] text-stone-500 uppercase tracking-wider font-medium">공정률</span>
-              <span className="text-xs font-bold text-stone-900 num-mono">{progressRate}%</span>
+              <span className="text-[11px] text-stone-500 uppercase tracking-wider font-medium">공정률</span>
+              <span className="text-[13px] font-bold text-stone-900 num-mono">{progressRate}%</span>
             </div>
             <div className="flex gap-0.5 mb-1.5">
               {statuses.map((s) => (
@@ -1063,7 +1063,7 @@
                   title={`${s.label}: ${s.value || '미진행'}`} />
               ))}
             </div>
-            <p className={`text-xs ${ACTION_STYLE[actionType]} truncate`}>
+            <p className={`text-[12px] ${ACTION_STYLE[actionType]} truncate`}>
               {ACTION_PREFIX[actionType]}{nextAction}
             </p>
           </div>
@@ -1075,26 +1075,30 @@
           </div>
           </div>
 
-          <div className="flex flex-col gap-1 mt-3 pt-3 border-t border-stone-100">
-            {GIAN_ROWS.map((row, ri) => (
-              <div key={ri} className="flex gap-1">
-                {row.map((g) => {
-                  const val = site[g.key] || '미작성';
-                  const cls = GIAN_CLS[val] || GIAN_CLS['미작성'];
-                  const dot = GIAN_DOT[val] || GIAN_DOT['미작성'];
-                  return (
-                    <span key={g.key}
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium border cursor-pointer select-none transition-colors hover:ring-1 hover:ring-slate-400 ${cls}`}
-                      onClick={(e) => handleGianClick(e, g.key)}
-                      onContextMenu={(e) => handleGianContext(e, g.key)}
-                      title={`${g.label}: ${val} (클릭=완료, 우클릭=변경)`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
-                      {g.label}
-                    </span>
-                  );
-                })}
-              </div>
-            ))}
+          <div className="flex gap-1 flex-wrap mt-3 pt-3 border-t border-stone-100">
+            {[
+              { key: 'OPEN투자기안', label: 'OPEN투자' },
+              { key: '충전소수정기안', label: '충전소수정' },
+              { sep: true },
+              { key: '출고기안', label: '출고기안' },
+              { key: '철거기안', label: '철거기안' },
+              { key: '정산기안', label: '정산기안' },
+            ].map((g, i) => {
+              if (g.sep) return <div key={i} className="w-px h-4 bg-stone-200 self-center mx-0.5" />;
+              const val = site[g.key] || '미작성';
+              const cls = GIAN_CLS[val] || GIAN_CLS['미작성'];
+              const dot = GIAN_DOT[val] || GIAN_DOT['미작성'];
+              return (
+                <span key={g.key}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium border cursor-pointer select-none transition-colors hover:ring-1 hover:ring-slate-400 ${cls}`}
+                  onClick={(e) => handleGianClick(e, g.key)}
+                  onContextMenu={(e) => handleGianContext(e, g.key)}
+                  title={`${g.label}: ${val} (클릭=완료, 우클릭=변경)`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+                  {g.label}
+                </span>
+              );
+            })}
           </div>
 
           <ScheduleTimeline site={site} />
