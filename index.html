@@ -860,7 +860,7 @@
                 <option value="progressHigh">공정률 높은 순</option>
               </select>
             </div>
-            <div className="flex ml-auto border border-stone-300 rounded overflow-hidden">
+            <div className="flex border border-stone-300 rounded overflow-hidden">
               <button onClick={() => setViewMode('grid')}
                 className={`px-3 py-1.5 text-xs flex items-center gap-1.5 transition-colors ${viewMode === 'grid' ? 'bg-slate-800 text-white' : 'bg-white text-stone-600 hover:bg-stone-50'}`}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -881,11 +881,13 @@
               {filtered.map((s) => <SiteCard key={s.id} site={s} onClick={() => onEdit(s.id)} onSave={saveSite} />)}
             </div>
           ) : (
-            <div className="bg-white border border-stone-200 rounded-lg overflow-hidden">
+            <div className="bg-white border border-stone-200 rounded-lg overflow-x-auto">
+              <div style={{ minWidth: '1100px' }}>
               <div className="grid text-[13px] font-semibold text-stone-100 border-b-2 border-slate-700 bg-slate-800 px-5 py-3 sticky top-0 z-10" style={{ gridTemplateColumns: '2.5fr 0.6fr 1fr 0.2fr 1.2fr 2.2fr 1.8fr' }}>
                 <div>현장명</div><div>단계</div><div>공정률</div><div></div><div>충전기·용량</div><div>기안</div><div>예정일</div>
               </div>
               {filtered.map((s) => <SiteListRow key={s.id} site={s} onClick={() => onEdit(s.id)} onSave={saveSite} />)}
+              </div>
             </div>
           )}
         </div>
