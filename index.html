@@ -907,20 +907,34 @@
     }
     const TL_DOT = { future: 'bg-blue-200 border-blue-500', soon: 'bg-amber-200 border-amber-500', overdue: 'bg-red-200 border-red-500', na: 'bg-stone-200 border-stone-300' };
     const TL_TEXT = { future: 'text-stone-700', soon: 'text-amber-600', overdue: 'text-red-600', na: 'text-stone-400' };
-    function ScheduleTimeline({ site }) {
-      const items = SCHEDULE_DEFS.map((d) => ({ ...d, date: site[d.key], status: getDateStatus(site[d.key]) }));
-      if (items.every((i) => i.status === 'na')) return null;
+    function ScheduleTimeline({ site, onSave }) {
+      const items = SCHEDULE_DEFS.map((d) => ({ ...d, date: site[d.key], isDone: site[d.doneKey] === 'O', status: getDateStatus(site[d.key]) }));
+      if (items.every((i) => i.status === 'na' && !i.isDone)) return null;
       const fmt = (d) => { if (!d) return '—'; const dt = new Date(d); if (isNaN(dt)) return '—'; const p = d.split('-'); return `${p[1]}/${p[2]}(${DAY_NAMES[dt.getDay()]})`; };
+      const toggleDone = (item) => { if (onSave) onSave(cleanSite({ ...site, [item.doneKey]: item.isDone ? '' : 'O' })); };
+      const changeDate = (item, val) => { if (onSave) onSave(cleanSite({ ...site, [item.key]: val })); };
       return (
-        <div className="flex mt-2 pt-2 border-t border-stone-100">
-          {items.map((item, i) => (
-            <div key={item.key} className="flex-1 text-center relative">
-              {i < items.length && <div className="absolute top-[7px] left-0 right-0 h-[2px] bg-stone-200 z-0" style={i === 0 ? { left: '50%' } : i === items.length - 1 ? { right: '50%' } : {}} />}
-              <div className={`w-[10px] h-[10px] rounded-full border-2 mx-auto relative z-10 ${TL_DOT[item.status]}`} />
-              <div className="text-[12px] text-stone-500 mt-1">{item.label}</div>
-              <div className={`text-[12px] font-semibold num-mono ${TL_TEXT[item.status]}`}>{fmt(item.date)}</div>
-            </div>
-          ))}
+        <div className="mt-2 pt-2 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
+          <div className="flex">
+            {items.map((item, i) => {
+              const dateRef = React.createRef();
+              return (
+                <div key={item.key} className="flex-1 text-center relative">
+                  {i < items.length && <div className="absolute top-[7px] left-0 right-0 h-[2px] bg-stone-200 z-0" style={i === 0 ? { left: '50%' } : i === items.length - 1 ? { right: '50%' } : {}} />}
+                  <div onClick={() => toggleDone(item)}
+                    className={`w-[14px] h-[14px] rounded-full border-2 mx-auto relative z-10 cursor-pointer flex items-center justify-center transition-colors ${item.isDone ? 'bg-emerald-500 border-emerald-500' : TL_DOT[item.status]}`}>
+                    {item.isDone && <span className="text-white text-[8px] font-bold">✓</span>}
+                  </div>
+                  <div className={`text-[12px] mt-1 ${item.isDone ? 'text-stone-800 font-medium' : 'text-stone-500'}`}>{item.label}</div>
+                  <div className={`text-[12px] font-semibold num-mono cursor-pointer hover:underline ${item.isDone ? 'text-emerald-700' : TL_TEXT[item.status]}`}
+                    onClick={() => dateRef.current && dateRef.current.showPicker()}>
+                    {fmt(item.date) || <span className="text-stone-300">입력</span>}
+                  </div>
+                  <input ref={dateRef} type="date" className="sr-only" value={item.date || ''} onChange={(e) => changeDate(item, e.target.value)} />
+                </div>
+              );
+            })}
+          </div>
         </div>
       );
     }
@@ -1144,7 +1158,7 @@
             })}
           </div>
 
-          <ScheduleTimeline site={site} />
+          <ScheduleTimeline site={site} onSave={onSave} />
 
           {contextMenu && (
             <div className="fixed bg-white border border-stone-200 rounded-lg shadow-lg py-1 z-50" style={{ left: contextMenu.x, top: contextMenu.y }}>
