@@ -573,32 +573,21 @@
       const [selectedId, setSelectedId] = useState(null);
       const [loading, setLoading] = useState(true);
       const [searchTerm, setSearchTerm] = useState('');
-      const [filterStage, setFilterStage] = useState(null);
-      const [sortBy, setSortBy] = useState(null);
-      const [viewMode, setViewMode] = useState(null);
+      const [filterStage, setFilterStage] = useState('전체');
+      const [sortBy, setSortBy] = useState('progressHigh');
+      const [viewMode, setViewMode] = useState('list');
       const [memoWidth, setMemoWidth] = useState(224);
-      const [uiReady, setUiReady] = useState(false);
 
       useEffect(() => {
         db.collection('settings').doc('ui').get().then((doc) => {
           if (doc.exists) {
             const d = doc.data();
             if (d.memoWidth) setMemoWidth(d.memoWidth);
-            setViewMode(d.viewMode || 'list');
-            setSortBy(d.sortBy || 'progressHigh');
-            setFilterStage(d.filterStage || '전체');
-          } else {
-            setViewMode('list');
-            setSortBy('progressHigh');
-            setFilterStage('전체');
+            if (d.viewMode) setViewMode(d.viewMode);
+            if (d.sortBy) setSortBy(d.sortBy);
+            if (d.filterStage) setFilterStage(d.filterStage);
           }
-          setUiReady(true);
-        }).catch(() => {
-          setViewMode('list');
-          setSortBy('progressHigh');
-          setFilterStage('전체');
-          setUiReady(true);
-        });
+        }).catch(() => {});
       }, []);
 
       const saveUiSetting = (key, val) => {
@@ -709,7 +698,7 @@
           <Header view={view} setView={setView} onNew={() => goToEditor(null)}
             onExport={handleExport} onImport={handleImport} />
           <main className="max-w-7xl mx-auto px-6 py-8">
-            {(loading || !uiReady) ? (
+            {loading ? (
               <div className="text-center py-20 text-stone-500">불러오는 중…</div>
             ) : view === 'list' ? (
               <SiteList sites={sites} searchTerm={searchTerm} setSearchTerm={setSearchTerm}
