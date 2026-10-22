@@ -360,6 +360,7 @@
       'OPEN투자기안': 'OPEN투자기안', '충전소수정기안': '충전소수정기안',
       '출고기안': '출고기안', '철거기안': '철거기안', '정산기안': '정산기안', '착공예정일': '착공예정일',
       '착공 완료': '착공_완료', '안전점검 완료': '안전점검_완료', '사용검사 완료': '사용검사_완료',
+      '준공검수 예정일': '준공검수_예정일', '준공검수 완료': '준공검수_완료', '준공검수 진행여부': '준공검수_진행여부',
       '수요조사 작성': '수요조사_작성', '출하요청 기안': '출하요청_기안',
       '출하예정일': '출하예정일', '출하여부': '출하여부',
       '시공 과금형 수량': '시공_과금형_수량', '시공 과금형 제조사': '시공_과금형_제조사', '시공 과금형 모델명': '시공_과금형_모델명',
@@ -488,12 +489,13 @@
           '사용검사 신청여부': s.사용검사_신청여부 || '', '사용검사 예정일': s.사용검사_예정일 || '',
           '감리선임 업체명': s.감리선임_업체명 || '', '감리선임 수수료': s.감리선임_매입 ?? '', '감리선임 납부여부': s.감리선임_납부여부 || '',
           '착공 진행현황': s.출하진행 || '',
-          '시공 계량기부설': s.계량기_부설 || '', '시공 품질검수': s.품질검수 || '',
+          '시공 계량기부설': s.계량기_부설 || '',
           '시공 진행현황': s.시공진행 || '',
           '준공완료일자': s.준공완료일자 || '', '오픈일자': s.오픈일자 || '', '준공 진행현황': s.준공진행 || '',
           '무공해차 통합누리집 등록여부': s.누리집_등록여부 || '',
           '철거기안': s.철거기안 || '', '착공예정일': s.착공예정일 || '',
           '착공 완료': s.착공_완료 || '', '안전점검 완료': s.안전점검_완료 || '', '사용검사 완료': s.사용검사_완료 || '',
+          '준공검수 예정일': s.준공검수_예정일 || '', '준공검수 완료': s.준공검수_완료 || '', '준공검수 진행여부': s.준공검수_진행여부 || '',
           '정산기안': s.정산기안 || '', '정산 승인현황': s.정산진행 || '',
           '보조금 금액': s.보조금 ?? '', '보조금 신청일': s.보조금_신청일 || '', '보조금 지급일': s.보조금_지급일 || '',
           '공사 매출(원)': s.공사매출 ?? '', '공사 매입(원)': maipSum,
@@ -903,6 +905,7 @@
       { key: '착공예정일', doneKey: '착공_완료', label: '착공' },
       { key: '전기안전점검_예정일', doneKey: '안전점검_완료', label: '안전점검' },
       { key: '사용검사_예정일', doneKey: '사용검사_완료', label: '사용검사' },
+      { key: '준공검수_예정일', doneKey: '준공검수_완료', label: '준공검수' },
     ];
     function getDateStatus(dateStr) {
       if (!dateStr) return 'na';
@@ -1833,12 +1836,6 @@
             </div>
           </FormSection>
 
-          <FormSection title="품질검수">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Field label="품질검수 (시운전 TEST 포함)"><TextInput value={draft.품질검수} onChange={(v) => update('품질검수', v)} placeholder="예: 완료 / 진행 중 / 일자 등" /></Field>
-            </div>
-          </FormSection>
-
           <FormSection title="시공 진행현황">
             <Field label="진행현황"><Select value={draft.시공진행} onChange={(v) => update('시공진행', v)} options={ENUMS.시공진행} /></Field>
           </FormSection>
@@ -1875,6 +1872,13 @@
         <div className="space-y-6">
           <FormSection title="기안">
             <Field label="시공비정산기안"><Select value={draft.정산기안} onChange={(v) => update('정산기안', v)} options={ENUMS.기안상태} /></Field>
+          </FormSection>
+
+          <FormSection title="준공검수">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Field label="준공검수 예정일"><TextInput type="date" value={draft.준공검수_예정일} onChange={(v) => update('준공검수_예정일', v)} /></Field>
+              <Field label="진행여부"><Select value={draft.준공검수_진행여부} onChange={(v) => update('준공검수_진행여부', v)} options={ENUMS.진행여부} /></Field>
+            </div>
           </FormSection>
 
           <FormSection title="시공비 승인">
