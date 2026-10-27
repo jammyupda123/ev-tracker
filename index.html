@@ -835,7 +835,12 @@
               <Icons.Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
               <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="현장명·지역·주소·시공사 검색"
-                className="w-full pl-10 pr-3 py-2 bg-white border border-stone-300 rounded text-sm focus:outline-none focus:border-slate-800" />
+                className="w-full pl-10 pr-9 py-2 bg-white border border-stone-300 rounded text-sm focus:outline-none focus:border-slate-800" />
+              {searchTerm && (
+                <button onClick={() => setSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors focus:outline-none">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Icons.Filter size={14} className="text-stone-500" />
