@@ -361,6 +361,7 @@
       '출고기안': '출고기안', '철거기안': '철거기안', '정산기안': '정산기안', '착공예정일': '착공예정일',
       '착공 완료': '착공_완료', '안전점검 완료': '안전점검_완료', '사용검사 완료': '사용검사_완료',
       '준공검수 예정일': '준공검수_예정일', '준공검수 완료': '준공검수_완료', '준공검수 진행여부': '준공검수_진행여부',
+      '준공안내 예정일': '준공안내_예정일', '준공안내 완료': '준공안내_완료', '준공안내 진행여부': '준공안내_진행여부',
       '수요조사 작성': '수요조사_작성', '출하요청 기안': '출하요청_기안',
       '출하예정일': '출하예정일', '출하여부': '출하여부',
       '시공 과금형 수량': '시공_과금형_수량', '시공 과금형 제조사': '시공_과금형_제조사', '시공 과금형 모델명': '시공_과금형_모델명',
@@ -496,6 +497,7 @@
           '철거기안': s.철거기안 || '', '착공예정일': s.착공예정일 || '',
           '착공 완료': s.착공_완료 || '', '안전점검 완료': s.안전점검_완료 || '', '사용검사 완료': s.사용검사_완료 || '',
           '준공검수 예정일': s.준공검수_예정일 || '', '준공검수 완료': s.준공검수_완료 || '', '준공검수 진행여부': s.준공검수_진행여부 || '',
+          '준공안내 예정일': s.준공안내_예정일 || '', '준공안내 완료': s.준공안내_완료 || '', '준공안내 진행여부': s.준공안내_진행여부 || '',
           '정산기안': s.정산기안 || '', '정산 승인현황': s.정산진행 || '',
           '보조금 금액': s.보조금 ?? '', '보조금 신청일': s.보조금_신청일 || '', '보조금 지급일': s.보조금_지급일 || '',
           '공사 매출(원)': s.공사매출 ?? '', '공사 매입(원)': maipSum,
@@ -788,7 +790,7 @@
         });
         const result = enriched.filter((s) => {
           if (filterStage === '진행중 (100% 제외)') {
-            if (Math.round(s._progressRate) >= 100 && s.준공검수_완료 === 'O') return false;
+            if (Math.round(s._progressRate) >= 100 && s.준공검수_완료 === 'O' && s.준공안내_완료 === 'O') return false;
           } else if (filterStage === '⚠️ 보류 있음') {
             if (!s._hasProblem) return false;
           } else if (filterStage !== '전체') {
@@ -898,6 +900,7 @@
       { key: '전기안전점검_예정일', doneKey: '안전점검_완료', label: '안전점검' },
       { key: '사용검사_예정일', doneKey: '사용검사_완료', label: '사용검사' },
       { key: '준공검수_예정일', doneKey: '준공검수_완료', label: '준공검수' },
+      { key: '준공안내_예정일', doneKey: '준공안내_완료', label: '준공안내' },
     ];
     function getDateStatus(dateStr) {
       if (!dateStr) return 'na';
@@ -1870,6 +1873,13 @@
             </div>
             <Field label="준공서류 제출현황"><Select value={draft.준공진행} onChange={(v) => update('준공진행', v)} options={ENUMS.준공진행} /></Field>
             <Field label="무공해차 통합누리집 등록여부"><Select value={draft.누리집_등록여부} onChange={(v) => update('누리집_등록여부', v)} options={ENUMS.누리집등록} /></Field>
+          </FormSection>
+
+          <FormSection title="준공안내">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Field label="준공안내 예정일"><TextInput type="date" value={draft.준공안내_예정일} onChange={(v) => update('준공안내_예정일', v)} /></Field>
+              <Field label="진행여부"><Select value={draft.준공안내_진행여부} onChange={(v) => update('준공안내_진행여부', v)} options={ENUMS.진행여부} /></Field>
+            </div>
           </FormSection>
         </div>
       );
