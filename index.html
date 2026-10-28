@@ -884,10 +884,10 @@
           ) : (
             <div className="bg-white border border-stone-200 rounded-lg overflow-x-auto">
               <div style={{ minWidth: '1100px' }}>
-              <div className="grid text-[13px] font-semibold text-stone-100 border-b-2 border-slate-700 bg-slate-800 px-5 py-3 sticky top-0 z-10" style={{ gridTemplateColumns: '2.5fr 0.6fr 1fr 0.2fr 1.2fr 2.2fr 1.8fr' }}>
+              <div className="grid text-[13px] font-semibold text-stone-100 border-b-2 border-slate-700 bg-slate-800 px-5 py-3 sticky top-0 z-10" style={{ gridTemplateColumns: '2.5fr 0.6fr 1fr 0.2fr 1.2fr 2fr 2.2fr' }}>
                 <div>현장명</div><div>단계</div><div>공정률</div><div></div><div>충전기·용량</div><div>기안</div><div>예정일</div>
               </div>
-              {filtered.map((s) => <SiteListRow key={s.id} site={s} onClick={() => onEdit(s.id)} onSave={saveSite} />)}
+              {filtered.map((s, idx) => <SiteListRow key={s.id} site={s} idx={idx} onClick={() => onEdit(s.id)} onSave={saveSite} />)}
               </div>
             </div>
           )}
@@ -904,8 +904,8 @@
       { key: '착공예정일', doneKey: '착공_완료', label: '착공' },
       { key: '전기안전점검_예정일', doneKey: '안전점검_완료', label: '안전점검' },
       { key: '사용검사_예정일', doneKey: '사용검사_완료', label: '사용검사' },
-      { key: '준공검수_예정일', doneKey: '준공검수_완료', label: '준공검수' },
       { key: '준공안내_예정일', doneKey: '준공안내_완료', label: '준공안내' },
+      { key: '준공검수_예정일', doneKey: '준공검수_완료', label: '준공검수' },
     ];
     function getDateStatus(dateStr) {
       if (!dateStr) return 'na';
@@ -961,7 +961,7 @@
     const GIAN_CLS_STATIC = { '작성완료': 'bg-emerald-50 text-emerald-700', '미작성': 'bg-amber-50 text-amber-700', '해당없음': 'bg-stone-50 text-stone-400' };
     const GIAN_DOT_STATIC = { '작성완료': 'bg-emerald-500', '미작성': 'bg-amber-500', '해당없음': 'bg-stone-300' };
 
-    function SiteListRow({ site, onClick, onSave }) {
+    function SiteListRow({ site, idx, onClick, onSave }) {
       const stage = site._stage || getAutoStage(site);
       const channels = getTotalChannels(site);
       const kw = getTotalKw(site);
@@ -974,7 +974,7 @@
         [{ key: '정산기안', label: '정산기안' }],
       ];
       return (
-        <div className="grid items-center px-5 py-3.5 border-b-2 border-stone-200 hover:bg-stone-50 transition-colors cursor-pointer relative" style={{ gridTemplateColumns: '2.5fr 0.6fr 1fr 0.2fr 1.2fr 2.2fr 1.8fr' }} onClick={onClick}>
+        <div className={`grid items-center px-5 py-3.5 border-b-2 border-stone-200 hover:brightness-[0.98] transition-all cursor-pointer relative ${idx % 2 === 1 ? 'bg-[#F8FAFC]' : ''}`} style={{ gridTemplateColumns: '2.5fr 0.6fr 1fr 0.2fr 1.2fr 2fr 2.2fr' }} onClick={onClick}>
           <div className="min-w-0">
             <div className="text-[12px] text-stone-500 truncate mb-1">영업 {site.HEV영업담당자 || '미배정'} · 시공 {site.시공사 || '미배정'}</div>
             <div className="text-[14px] font-semibold text-stone-900 truncate leading-snug">{site.현장명 || '(이름 없음)'}</div>
@@ -1003,21 +1003,24 @@
               </div>
             ))}
           </div>
-          <div className="flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
-            {SCHEDULE_DEFS.map((d) => {
+          <div className="flex" onClick={(e) => e.stopPropagation()}>
+            {SCHEDULE_DEFS.map((d, i) => {
               const st = getDateStatus(site[d.key]);
               const isDone = site[d.doneKey] === 'O';
-              const formatted = fmtDateFull(site[d.key]);
               const dateRef = React.createRef();
+              const fmt = (v) => { if (!v) return '—'; const dt = new Date(v); if (isNaN(dt)) return '—'; const p = v.split('-'); return `${p[1]}/${p[2]}`; };
               return (
-                <div key={d.key} className="flex items-center gap-2 text-[12px]">
-                  <input type="checkbox" checked={isDone} onChange={(e) => onSave(cleanSite({ ...site, [d.doneKey]: e.target.checked ? 'O' : '' }))}
-                    className="w-3.5 h-3.5 rounded border-stone-300 text-slate-800 focus:ring-slate-800 cursor-pointer" />
-                  <span className={`font-medium ${isDone ? 'text-stone-800' : 'text-stone-500'}`} style={{ minWidth: '52px' }}>{d.label}</span>
-                  <span className={`num-mono font-semibold cursor-pointer px-1.5 py-0.5 rounded border border-dashed border-transparent hover:border-stone-300 hover:bg-stone-50 transition-colors ${isDone ? 'text-stone-800' : TL_TEXT[st]}`}
+                <div key={d.key} className="flex-1 text-center relative min-w-0">
+                  {i < SCHEDULE_DEFS.length && <div className="absolute top-[7px] left-0 right-0 h-[2px] bg-stone-200 z-0" style={i === 0 ? { left: '50%' } : i === SCHEDULE_DEFS.length - 1 ? { right: '50%' } : {}} />}
+                  <div onClick={() => onSave(cleanSite({ ...site, [d.doneKey]: isDone ? '' : 'O' }))}
+                    className={`w-[14px] h-[14px] rounded-full border-2 mx-auto relative z-10 cursor-pointer flex items-center justify-center transition-colors ${isDone ? 'bg-emerald-500 border-emerald-500' : TL_DOT[st]}`}>
+                    {isDone && <span className="text-white text-[8px] font-bold">✓</span>}
+                  </div>
+                  <div className={`text-[10px] mt-0.5 ${isDone ? 'text-emerald-600 font-medium' : 'text-stone-500'}`}>{d.label}</div>
+                  <div className={`text-[10px] font-semibold num-mono cursor-pointer hover:underline ${isDone ? 'text-emerald-700' : TL_TEXT[st]}`}
                     onClick={() => dateRef.current && dateRef.current.showPicker()}>
-                    {formatted || <span className="text-stone-300">— 입력</span>}
-                  </span>
+                    {fmt(site[d.key])}
+                  </div>
                   <input ref={dateRef} type="date" className="sr-only" value={site[d.key] || ''}
                     onChange={(e) => onSave(cleanSite({ ...site, [d.key]: e.target.value }))} />
                 </div>
