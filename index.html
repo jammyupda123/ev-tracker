@@ -154,7 +154,7 @@
       준공진행: ['', '미제출', '제출', '완료'],
       누리집등록: ['', 'O', '등록요청완료', '해당없음'],
       정산진행: ['', '미승인', '승인진행', '승인완료'],
-      시공사: ['', '인엠스', '브리츠테크놀로지', 'EVCP', '이모션플레이스', '기타'],
+      시공사: ['', '인엠스', '브리츠테크놀로지', 'EVCP', '이모션플레이스', '반직영', '기타'],
       신고여부: ['', 'O', 'X', '해당없음'],
       의무보험: ['', 'O', 'X', '해당없음'],
       진행여부: ['', 'O', '대기중'],
@@ -579,6 +579,7 @@
       const [sortBy, setSortBy] = useState('progressHigh');
       const [viewMode, setViewMode] = useState('list');
       const [memoWidth, setMemoWidth] = useState(224);
+      const [gianMenu, setGianMenu] = useState(null);
 
       useEffect(() => {
         db.collection('settings').doc('ui').get().then((doc) => {
@@ -709,7 +710,7 @@
                 viewMode={viewMode} setViewMode={(v) => { setViewMode(v); saveUiSetting('viewMode', v); }}
                 onEdit={(id) => goToEditor(id)}
                 onNew={() => goToEditor(null)}
-                saveSite={saveSite} />
+                saveSite={saveSite} openGianMenu={setGianMenu} />
             ) : view === 'editor' ? (
               <SiteEditor site={selectedSite} onSave={saveSite} onDelete={deleteSite}
                 memoWidth={memoWidth} onMemoWidthChange={saveMemoWidth}
@@ -719,6 +720,19 @@
               <Dashboard sites={sites} onEditFromDashboard={(id) => goToEditor(id)} />
             )}
           </main>
+          {gianMenu && (
+            <div className="fixed inset-0 z-[9998]" onClick={() => setGianMenu(null)} onContextMenu={(e) => { e.preventDefault(); setGianMenu(null); }}>
+              <div className="fixed bg-white border border-stone-200 rounded-lg shadow-xl py-1 z-[9999]" style={{ left: gianMenu.x, top: gianMenu.y }}
+                onClick={(e) => e.stopPropagation()}>
+                {['미작성', '작성완료', '해당없음'].map((v) => (
+                  <button key={v} onClick={() => { gianMenu.onSet(v); setGianMenu(null); }}
+                    className="block w-full text-left px-4 py-2 text-sm hover:bg-stone-100 transition-colors">
+                    <span className={`inline-block w-2 h-2 rounded-full mr-2 ${GIAN_DOT_STATIC[v]}`} />{v}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       );
     }
@@ -772,7 +786,7 @@
       );
     }
 
-    function SiteList({ sites, searchTerm, setSearchTerm, filterStage, setFilterStage, sortBy, setSortBy, viewMode, setViewMode, onEdit, onNew, saveSite }) {
+    function SiteList({ sites, searchTerm, setSearchTerm, filterStage, setFilterStage, sortBy, setSortBy, viewMode, setViewMode, onEdit, onNew, saveSite, openGianMenu }) {
       const filtered = useMemo(() => {
         const term = searchTerm.toLowerCase();
         const progressKeys = ['영업진행', '실사진행', '설계진행', '계약진행', '출하진행', '시공진행', '준공진행', '정산진행'];
@@ -879,7 +893,7 @@
             <EmptyState onNew={onNew} hasData={sites.length > 0} />
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filtered.map((s) => <SiteCard key={s.id} site={s} onClick={() => onEdit(s.id)} onSave={saveSite} />)}
+              {filtered.map((s) => <SiteCard key={s.id} site={s} onClick={() => onEdit(s.id)} onSave={saveSite} openGianMenu={openGianMenu} />)}
             </div>
           ) : (
             <div className="bg-white border border-stone-200 rounded-lg overflow-x-auto">
@@ -887,7 +901,7 @@
               <div className="grid text-[13px] font-semibold text-stone-100 border-b-2 border-slate-700 bg-slate-800 px-5 py-3 sticky top-0 z-10" style={{ gridTemplateColumns: '2.5fr 0.6fr 1fr 0.2fr 1.2fr 2fr 2.2fr' }}>
                 <div>현장명</div><div>단계</div><div>공정률</div><div></div><div>충전기·용량</div><div>기안</div><div>예정일</div>
               </div>
-              {filtered.map((s, idx) => <SiteListRow key={s.id} site={s} idx={idx} onClick={() => onEdit(s.id)} onSave={saveSite} />)}
+              {filtered.map((s, idx) => <SiteListRow key={s.id} site={s} idx={idx} onClick={() => onEdit(s.id)} onSave={saveSite} openGianMenu={openGianMenu} />)}
               </div>
             </div>
           )}
@@ -961,20 +975,19 @@
     const GIAN_CLS_STATIC = { '작성완료': 'bg-emerald-50 text-emerald-700', '미작성': 'bg-amber-50 text-amber-700', '해당없음': 'bg-stone-50 text-stone-400' };
     const GIAN_DOT_STATIC = { '작성완료': 'bg-emerald-500', '미작성': 'bg-amber-500', '해당없음': 'bg-stone-300' };
 
-    function SiteListRow({ site, idx, onClick, onSave }) {
+    function SiteListRow({ site, idx, onClick, onSave, openGianMenu }) {
       const stage = site._stage || getAutoStage(site);
       const channels = getTotalChannels(site);
       const kw = getTotalKw(site);
       const pRate = site._progressRate || 0;
-      const [ctxMenu, setCtxMenu] = useState(null);
-      useEffect(() => { if (ctxMenu) { const c = () => setCtxMenu(null); window.addEventListener('click', c); return () => window.removeEventListener('click', c); } }, [ctxMenu]);
       const GIAN_ROWS = [
         [{ key: 'OPEN투자기안', label: 'OPEN투자' }, { key: '충전소수정기안', label: '충전소수정' }],
         [{ key: '출고기안', label: '출고기안' }, { key: '철거기안', label: '철거기안' }],
         [{ key: '정산기안', label: '정산기안' }],
       ];
       return (
-        <div className={`grid items-center px-5 py-3.5 border-b-2 border-stone-200 hover:brightness-[0.98] transition-all cursor-pointer relative ${idx % 2 === 1 ? 'bg-[#F8FAFC]' : ''}`} style={{ gridTemplateColumns: '2.5fr 0.6fr 1fr 0.2fr 1.2fr 2fr 2.2fr' }} onClick={onClick}>
+        <div className={`grid items-center px-5 py-3.5 border-b-2 border-stone-200 hover:brightness-[0.98] transition-all cursor-pointer relative ${idx % 2 === 1 ? 'bg-[#F8FAFC]' : ''}`} style={{ gridTemplateColumns: '2.5fr 0.6fr 1fr 0.2fr 1.2fr 2fr 2.2fr' }} onClick={onClick}
+>
           <div className="min-w-0">
             <div className="text-[12px] text-stone-500 truncate mb-1">영업 {site.HEV영업담당자 || '미배정'} · 시공 {site.시공사 || '미배정'}</div>
             <div className="text-[14px] font-semibold text-stone-900 truncate leading-snug">{site.현장명 || '(이름 없음)'}</div>
@@ -987,7 +1000,7 @@
           </div>
           <div />
           <div className="text-[13px] text-stone-600"><strong className="num-mono">{channels || 0}</strong> CH · <strong className="num-mono">{kw || 0}</strong> kW</div>
-          <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+          <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()} onContextMenu={(e) => e.preventDefault()}>
             {GIAN_ROWS.map((row, ri) => (
               <div key={ri} className="flex gap-1">
                 {row.map((g) => {
@@ -995,7 +1008,7 @@
                   return (
                     <span key={g.key} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[12px] font-medium cursor-pointer hover:ring-1 hover:ring-slate-400 ${GIAN_CLS_STATIC[val] || GIAN_CLS_STATIC['미작성']}`}
                       onClick={() => { if (val !== '작성완료') onSave(cleanSite({ ...site, [g.key]: '작성완료' })); }}
-                      onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ key: g.key, x: e.clientX, y: e.clientY }); }}>
+                      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); openGianMenu({ x: e.clientX, y: e.clientY, onSet: (v) => onSave(cleanSite({ ...site, [g.key]: v })) }); }}>
                       <span className={`w-1.5 h-1.5 rounded-full ${GIAN_DOT_STATIC[val] || GIAN_DOT_STATIC['미작성']}`} />{g.label}
                     </span>
                   );
@@ -1027,16 +1040,7 @@
               );
             })}
           </div>
-          {ctxMenu && (
-            <div className="fixed bg-white border border-stone-200 rounded-lg shadow-lg py-1 z-50" style={{ left: ctxMenu.x, top: ctxMenu.y }}>
-              {['미작성', '작성완료', '해당없음'].map((v) => (
-                <button key={v} onClick={(e) => { e.stopPropagation(); onSave(cleanSite({ ...site, [ctxMenu.key]: v })); setCtxMenu(null); }}
-                  className="block w-full text-left px-4 py-1.5 text-xs hover:bg-stone-50">
-                  <span className={`inline-block w-1.5 h-1.5 rounded-full mr-2 ${GIAN_DOT_STATIC[v]}`} />{v}
-                </button>
-              ))}
-            </div>
-          )}
+
         </div>
       );
     }
@@ -1061,14 +1065,12 @@
       );
     }
 
-    function SiteCard({ site, onClick, onSave }) {
+    function SiteCard({ site, onClick, onSave, openGianMenu }) {
       const stage = getAutoStage(site);
       const channels = getTotalChannels(site);
       const kw = getTotalKw(site);
       const marginRate = getMarginRate(site);
       const { statuses, nextAction, actionType, progressRate } = getProgress(site);
-      const [contextMenu, setContextMenu] = useState(null);
-
       const GIAN_ROWS = [
         [{ key: 'OPEN투자기안', label: 'OPEN투자' }, { key: '충전소수정기안', label: '충전소수정' }],
         [{ key: '출고기안', label: '출고기안' }, { key: '철거기안', label: '철거기안' }],
@@ -1084,25 +1086,7 @@
           onSave(cleanSite({ ...site, [key]: '작성완료' }));
         }
       };
-      const handleGianContext = (e, key) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setContextMenu({ key, x: e.clientX, y: e.clientY });
-      };
-      const handleGianSet = (val) => {
-        if (contextMenu) {
-          onSave(cleanSite({ ...site, [contextMenu.key]: val }));
-          setContextMenu(null);
-        }
-      };
 
-      useEffect(() => {
-        if (contextMenu) {
-          const close = () => setContextMenu(null);
-          window.addEventListener('click', close);
-          return () => window.removeEventListener('click', close);
-        }
-      }, [contextMenu]);
 
       return (
         <div className="bg-white border border-stone-200 rounded-lg p-5 text-left hover:border-slate-800 hover:shadow-sm transition-all relative">
@@ -1163,7 +1147,7 @@
                 <span key={g.key}
                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[12px] font-medium border cursor-pointer select-none transition-colors hover:ring-1 hover:ring-slate-400 ${cls}`}
                   onClick={(e) => handleGianClick(e, g.key)}
-                  onContextMenu={(e) => handleGianContext(e, g.key)}
+                  onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); openGianMenu({ x: e.clientX, y: e.clientY, onSet: (v) => onSave(cleanSite({ ...site, [g.key]: v })) }); }}
                   title={`${g.label}: ${val} (클릭=완료, 우클릭=변경)`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
                   {g.label}
@@ -1173,17 +1157,6 @@
           </div>
 
           <ScheduleTimeline site={site} onSave={onSave} />
-
-          {contextMenu && (
-            <div className="fixed bg-white border border-stone-200 rounded-lg shadow-lg py-1 z-50" style={{ left: contextMenu.x, top: contextMenu.y }}>
-              {['미작성', '작성완료', '해당없음'].map((v) => (
-                <button key={v} onClick={(e) => { e.stopPropagation(); handleGianSet(v); }}
-                  className="block w-full text-left px-4 py-1.5 text-xs hover:bg-stone-50 transition-colors">
-                  <span className={`inline-block w-1.5 h-1.5 rounded-full mr-2 ${GIAN_DOT[v]}`} />{v}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       );
     }
