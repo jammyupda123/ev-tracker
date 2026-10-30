@@ -513,6 +513,24 @@
       ws['!cols'] = Array(Object.keys(rows[0]).length).fill({ wch: 15 });
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, '사이트 목록');
+      // 철거 시트
+      if (window.__demoSitesForExport && window.__demoSitesForExport.length > 0) {
+        const demoRows = window.__demoSitesForExport.map((s) => ({
+          '현장명': s.현장명 || '', '지역': s.지역 || '', '주소': s.주소 || '', '건물유형': s.건물유형 || '',
+          '투자유형': s.투자유형 || '', '시공사': s.시공사 || '', '이동일자': s.이동일자 || '',
+          '계약일': s.demo_계약일 || '', '계약기간': s.demo_계약기간 || '',
+          '충전소수정기안': s.충전소수정기안 || '', '철거기안': s.철거기안 || '', '정산기안': s.정산기안 || '',
+          '공사예정일': s.demo_공사예정일 || '', '공사완료': s.demo_공사완료 || '',
+          '철거안내일': s.demo_철거안내일 || '', '철거안내완료': s.demo_철거안내완료 || '',
+          '계량기해지': s.demo_계량기해지 || '',
+          '계약진행': s.demo_계약진행 || '', '시공진행': s.demo_시공진행 || '', '정산진행': s.demo_정산진행 || '',
+          '공사매출': s.demo_매출 || '', '공사매입': s.demo_매입 || '',
+          '시공메모': s.demo_시공메모 || '', '정산메모': s.demo_정산메모 || '', '비고': s.demo_비고 || '',
+        }));
+        const demoWs = XLSX.utils.json_to_sheet(demoRows);
+        demoWs['!cols'] = Array(Object.keys(demoRows[0]).length).fill({ wch: 15 });
+        XLSX.utils.book_append_sheet(wb, demoWs, '철거');
+      }
       const today = new Date().toISOString().slice(0, 10);
       XLSX.writeFile(wb, `EV트래커_사이트목록_${today}.xlsx`);
     };
@@ -580,6 +598,50 @@
       const [viewMode, setViewMode] = useState('list');
       const [memoWidth, setMemoWidth] = useState(224);
       const [gianMenu, setGianMenu] = useState(null);
+
+      // 철거 사이트
+      const [demoSites, setDemoSites] = useState([]);
+      const [selectedDemoId, setSelectedDemoId] = useState(null);
+      useEffect(() => {
+        return db.collection('demolition_sites').orderBy('updatedAt', 'desc').onSnapshot((snap) => {
+          setDemoSites(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        }, () => {});
+      }, []);
+      const selectedDemo = demoSites.find((s) => s.id === selectedDemoId) || null;
+      const saveDemoSite = async (data) => {
+        const { id, ...rest } = data;
+        rest.updatedAt = new Date().toISOString();
+        if (id) { await db.collection('demolition_sites').doc(id).set(rest, { merge: true }); }
+        else { await db.collection('demolition_sites').add({ ...rest, createdAt: new Date().toISOString() }); }
+      };
+      const deleteDemoSite = async (id) => {
+        if (!confirm('정말 삭제하시겠습니까?')) return;
+        await db.collection('demolition_sites').doc(id).delete();
+        if (view === 'demoEditor') setView('demolition');
+      };
+      const moveToDemo = async (siteId) => {
+        const site = sites.find((s) => s.id === siteId);
+        if (!site || !confirm('이 현장을 철거 탭으로 이동하시겠습니까?')) return;
+        const { id, ...rest } = site;
+        rest.원본사이트id = id;
+        rest.이동일자 = new Date().toISOString().slice(0, 10);
+        rest.updatedAt = new Date().toISOString();
+        rest.createdAt = new Date().toISOString();
+        await db.collection('demolition_sites').add(rest);
+        await db.collection('sites').doc(id).delete();
+        goToList();
+      };
+      const goToDemoEditor = (id) => {
+        scrollPosRef.current = window.scrollY;
+        setSelectedDemoId(id);
+        setView('demoEditor');
+        setTimeout(() => window.scrollTo(0, 0), 0);
+      };
+      const goToDemoList = () => {
+        setView('demolition');
+        setSelectedDemoId(null);
+        setTimeout(() => window.scrollTo(0, scrollPosRef.current), 0);
+      };
 
       useEffect(() => {
         db.collection('settings').doc('ui').get().then((doc) => {
@@ -670,6 +732,7 @@
 
       const handleExport = () => {
         try {
+          window.__demoSitesForExport = demoSites;
           exportToXlsx(sites);
         } catch (e) {
           console.error('export error', e);
@@ -712,10 +775,15 @@
                 onNew={() => goToEditor(null)}
                 saveSite={saveSite} openGianMenu={setGianMenu} />
             ) : view === 'editor' ? (
-              <SiteEditor site={selectedSite} onSave={saveSite} onDelete={deleteSite}
+              <SiteEditor site={selectedSite} onSave={saveSite} onDelete={deleteSite} onMoveToDemo={moveToDemo}
                 memoWidth={memoWidth} onMemoWidthChange={saveMemoWidth}
                 onCopy={(copyData) => { setSelectedId(null); setView('editor'); setTimeout(() => { window.__copyDraft = copyData; window.dispatchEvent(new Event('pasteCopy')); window.scrollTo(0, 0); }, 50); }}
                 onCancel={goToList} />
+            ) : view === 'demolition' ? (
+              <DemoList sites={demoSites} onEdit={(id) => goToDemoEditor(id)} onNew={() => goToDemoEditor(null)}
+                saveSite={saveDemoSite} openGianMenu={setGianMenu} />
+            ) : view === 'demoEditor' ? (
+              <DemoEditor site={selectedDemo} onSave={saveDemoSite} onDelete={deleteDemoSite} onCancel={goToDemoList} />
             ) : (
               <Dashboard sites={sites} onEditFromDashboard={(id) => goToEditor(id)} />
             )}
@@ -753,6 +821,7 @@
             </div>
             <nav className="flex items-center gap-2 flex-wrap">
               <NavButton active={view === 'list'} onClick={() => setView('list')} IconComp={Icons.LayoutGrid}>사이트</NavButton>
+              <NavButton active={view === 'demolition'} onClick={() => setView('demolition')} IconComp={Icons.Trash2}>철거</NavButton>
               <NavButton active={view === 'dashboard'} onClick={() => setView('dashboard')} IconComp={Icons.BarChart3}>대시보드</NavButton>
               <div className="ml-2 flex items-center gap-1.5 pl-3 border-l border-white/20">
                 <button onClick={onExport} title="Excel로 내보내기"
@@ -1170,7 +1239,7 @@
       );
     }
 
-    function SiteEditor({ site, onSave, onDelete, onCopy, onCancel, memoWidth, onMemoWidthChange }) {
+    function SiteEditor({ site, onSave, onDelete, onCopy, onCancel, onMoveToDemo, memoWidth, onMemoWidthChange }) {
       const [draft, setDraft] = useState(site || {});
       const [activeTab, setActiveTab] = useState('영업');
       const [memoWidthLocal, setMemoWidthLocal] = useState(memoWidth);
@@ -1232,6 +1301,12 @@
                   }}
                   className="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded transition-colors flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-slate-400">
                   <Icons.Copy size={14} /> 복사
+                </button>
+              )}
+              {site && onMoveToDemo && (
+                <button onClick={() => onMoveToDemo(site.id)}
+                  className="px-3 py-2 text-sm text-orange-700 hover:bg-orange-50 rounded transition-colors flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-orange-400">
+                  <Icons.Trash2 size={14} /> 철거로 이동
                 </button>
               )}
               {site && (
@@ -1997,6 +2072,326 @@
         오픈: opened[m] || 0,
       }));
     };
+
+    // ============================================================
+    // 철거 컴포넌트
+    // ============================================================
+    const DEMO_STAGES = ['계약', '시공', '정산'];
+    const DEMO_STAGE_COLORS = { '계약': 'bg-indigo-50 text-indigo-700 border-indigo-200', '시공': 'bg-rose-50 text-rose-700 border-rose-200', '정산': 'bg-slate-100 text-slate-700 border-slate-300' };
+    const DEMO_GIAN = [
+      { key: '충전소수정기안', label: '충전소수정' },
+      { key: '철거기안', label: '철거기안' },
+      { key: '정산기안', label: '정산기안' },
+    ];
+    const DEMO_SCHEDULE = [
+      { key: 'demo_공사예정일', doneKey: 'demo_공사완료', label: '공사예정' },
+      { key: 'demo_철거안내일', doneKey: 'demo_철거안내완료', label: '철거안내' },
+      { key: null, doneKey: 'demo_계량기해지', label: '계량기해지' },
+    ];
+    const getDemoStage = (s) => {
+      if (s.demo_정산진행) return '정산';
+      if (s.demo_시공진행) return '시공';
+      return '계약';
+    };
+
+    function DemoList({ sites, onEdit, onNew, saveSite, openGianMenu }) {
+      const [searchTerm, setSearchTerm] = useState('');
+      const [viewMode, setViewMode] = useState('list');
+      const filtered = useMemo(() => {
+        const term = searchTerm.toLowerCase();
+        return sites.filter((s) =>
+          (s.현장명 || '').toLowerCase().includes(term) || (s.시공사 || '').toLowerCase().includes(term) || (s.지역 || '').includes(term)
+        ).map((s) => ({ ...s, _stage: getDemoStage(s) }));
+      }, [sites, searchTerm]);
+
+      return (
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-stone-900">철거 목록</h2>
+              <p className="text-sm text-stone-500 mt-1">전체 <span className="num-mono font-semibold text-stone-900">{sites.length}</span>개</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 mb-6 flex-wrap">
+            <div className="relative flex-1 min-w-[200px] max-w-md">
+              <Icons.Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+              <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="현장명·시공사 검색"
+                className="w-full pl-10 pr-9 py-2 bg-white border border-stone-300 rounded text-sm focus:outline-none focus:border-slate-800" />
+              {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
+            </div>
+            <div className="flex border border-stone-300 rounded overflow-hidden">
+              <button onClick={() => setViewMode('grid')} className={`px-3 py-1.5 text-xs flex items-center gap-1.5 transition-colors ${viewMode === 'grid' ? 'bg-slate-800 text-white' : 'bg-white text-stone-600'}`}>그리드</button>
+              <button onClick={() => setViewMode('list')} className={`px-3 py-1.5 text-xs flex items-center gap-1.5 border-l border-stone-300 transition-colors ${viewMode === 'list' ? 'bg-slate-800 text-white' : 'bg-white text-stone-600'}`}>리스트</button>
+            </div>
+            <button onClick={onNew} className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 text-sm font-semibold rounded flex items-center gap-1.5">
+              <Icons.Plus size={16} /> 새 철거
+            </button>
+          </div>
+          {filtered.length === 0 ? (
+            <div className="text-center py-20 text-stone-400">등록된 철거 현장이 없습니다.</div>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filtered.map((s) => <DemoCard key={s.id} site={s} onClick={() => onEdit(s.id)} onSave={saveSite} openGianMenu={openGianMenu} />)}
+            </div>
+          ) : (
+            <div className="bg-white border border-stone-200 rounded-lg overflow-x-auto">
+              <div style={{ minWidth: '900px' }}>
+              <div className="grid text-[13px] font-semibold text-stone-100 border-b-2 border-slate-700 bg-slate-800 px-5 py-3 sticky top-0 z-10" style={{ gridTemplateColumns: '2.5fr 0.6fr 1fr 1.8fr 2fr' }}>
+                <div>현장명</div><div>단계</div><div>시공사</div><div>기안</div><div>공정</div>
+              </div>
+              {filtered.map((s, idx) => <DemoListRow key={s.id} site={s} idx={idx} onClick={() => onEdit(s.id)} onSave={saveSite} openGianMenu={openGianMenu} />)}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function DemoCard({ site, onClick, onSave, openGianMenu }) {
+      const stage = site._stage || getDemoStage(site);
+      return (
+        <div className="bg-white border border-stone-200 rounded-lg p-5 text-left hover:border-slate-800 hover:shadow-sm transition-all relative">
+          <div className="cursor-pointer" onClick={onClick}>
+            <div className="text-[12px] text-stone-500 mb-1">{site.시공사 || '미배정'} · {site.투자유형 || ''}</div>
+            <div className="flex items-start justify-between mb-2">
+              <h3 className="text-[15px] font-semibold text-stone-900 truncate flex-1">{site.현장명 || '(이름 없음)'}</h3>
+              {stage && <span className={`shrink-0 ml-2 px-2 py-0.5 text-[12px] font-medium rounded border ${DEMO_STAGE_COLORS[stage] || ''}`}>{stage}</span>}
+            </div>
+            <p className="text-[12px] text-stone-500">{site.지역 || '—'} · {site.건물유형 || '—'}</p>
+          </div>
+          <div className="flex gap-1 flex-wrap mt-3 pt-3 border-t border-stone-100">
+            {DEMO_GIAN.map((g) => {
+              const val = site[g.key] || '미작성';
+              const cls = GIAN_CLS_STATIC[val] || GIAN_CLS_STATIC['미작성'];
+              const dot = GIAN_DOT_STATIC[val] || GIAN_DOT_STATIC['미작성'];
+              return (
+                <span key={g.key} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[12px] font-medium border cursor-pointer select-none hover:ring-1 hover:ring-slate-400 ${cls}`}
+                  onClick={(e) => { e.stopPropagation(); if (val !== '작성완료') onSave(cleanSite({ ...site, [g.key]: '작성완료' })); }}
+                  onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); openGianMenu({ x: e.clientX, y: e.clientY, onSet: (v) => onSave(cleanSite({ ...site, [g.key]: v })) }); }}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />{g.label}
+                </span>
+              );
+            })}
+          </div>
+          <div className="mt-2 pt-2 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
+            <div className="flex">
+              {DEMO_SCHEDULE.map((d, i) => {
+                const isDone = site[d.doneKey] === 'O';
+                const hasDate = d.key != null;
+                const st = hasDate ? getDateStatus(site[d.key]) : 'na';
+                const dateRef = hasDate ? React.createRef() : null;
+                const fmt = (v) => { if (!v) return '—'; const dt = new Date(v); if (isNaN(dt)) return '—'; const p = v.split('-'); return `${p[1]}/${p[2]}(${DAY_NAMES[dt.getDay()]})`; };
+                return (
+                  <div key={d.label} className="flex-1 text-center relative">
+                    {<div className="absolute top-[7px] left-0 right-0 h-[2px] bg-stone-200 z-0" style={i === 0 ? { left: '50%' } : i === DEMO_SCHEDULE.length - 1 ? { right: '50%' } : {}} />}
+                    <div onClick={() => onSave(cleanSite({ ...site, [d.doneKey]: isDone ? '' : 'O' }))}
+                      className={`w-[14px] h-[14px] rounded-full border-2 mx-auto relative z-10 cursor-pointer flex items-center justify-center transition-colors ${isDone ? 'bg-emerald-500 border-emerald-500' : (hasDate ? TL_DOT[st] : TL_DOT.na)}`}>
+                      {isDone && <span className="text-white text-[8px] font-bold">✓</span>}
+                    </div>
+                    <div className={`text-[12px] mt-1 ${isDone ? 'text-stone-800 font-medium' : 'text-stone-500'}`}>{d.label}</div>
+                    {hasDate ? (
+                      <>
+                        <div className={`text-[12px] font-semibold num-mono cursor-pointer hover:underline ${isDone ? 'text-emerald-700' : TL_TEXT[st]}`}
+                          onClick={() => dateRef.current && dateRef.current.showPicker()}>
+                          {fmt(site[d.key]) || '—'}
+                        </div>
+                        <input ref={dateRef} type="date" className="sr-only" value={site[d.key] || ''} onChange={(e) => onSave(cleanSite({ ...site, [d.key]: e.target.value }))} />
+                      </>
+                    ) : (
+                      <div className={`text-[11px] ${isDone ? 'text-emerald-700 font-medium' : 'text-stone-400'}`}>{isDone ? '해지완료' : '미해지'}</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function DemoListRow({ site, idx, onClick, onSave, openGianMenu }) {
+      const stage = site._stage || getDemoStage(site);
+      return (
+        <div className={`grid items-center px-5 py-3.5 border-b-2 border-stone-200 hover:brightness-[0.98] transition-all cursor-pointer ${idx % 2 === 1 ? 'bg-[#F8FAFC]' : ''}`} style={{ gridTemplateColumns: '2.5fr 0.6fr 1fr 1.8fr 2fr' }} onClick={onClick}>
+          <div className="min-w-0">
+            <div className="text-[12px] text-stone-500 truncate mb-1">{site.시공사 || '미배정'} · {site.투자유형 || ''}</div>
+            <div className="text-[14px] font-semibold text-stone-900 truncate">{site.현장명 || '(이름 없음)'}</div>
+            <div className="text-[12px] text-stone-500 mt-0.5">{site.지역 || '—'} · {site.건물유형 || '—'}</div>
+          </div>
+          <div>{stage && <span className={`px-2 py-0.5 text-[11px] font-medium rounded border ${DEMO_STAGE_COLORS[stage] || ''}`}>{stage}</span>}</div>
+          <div className="text-[13px] text-stone-600 font-medium">{site.시공사 || '—'}</div>
+          <div className="flex gap-1 flex-wrap" onClick={(e) => e.stopPropagation()} onContextMenu={(e) => e.preventDefault()}>
+            {DEMO_GIAN.map((g) => {
+              const val = site[g.key] || '미작성';
+              return (
+                <span key={g.key} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[12px] font-medium cursor-pointer hover:ring-1 hover:ring-slate-400 ${GIAN_CLS_STATIC[val] || GIAN_CLS_STATIC['미작성']}`}
+                  onClick={() => { if (val !== '작성완료') onSave(cleanSite({ ...site, [g.key]: '작성완료' })); }}
+                  onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); openGianMenu({ x: e.clientX, y: e.clientY, onSet: (v) => onSave(cleanSite({ ...site, [g.key]: v })) }); }}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${GIAN_DOT_STATIC[val] || GIAN_DOT_STATIC['미작성']}`} />{g.label}
+                </span>
+              );
+            })}
+          </div>
+          <div className="flex" onClick={(e) => e.stopPropagation()}>
+            {DEMO_SCHEDULE.map((d, i) => {
+              const isDone = site[d.doneKey] === 'O';
+              const hasDate = d.key != null;
+              const st = hasDate ? getDateStatus(site[d.key]) : 'na';
+              const dateRef = hasDate ? React.createRef() : null;
+              const fmt = (v) => { if (!v) return '—'; const p = v.split('-'); return `${p[1]}/${p[2]}`; };
+              return (
+                <div key={d.label} className="flex-1 text-center relative min-w-0">
+                  {<div className="absolute top-[7px] left-0 right-0 h-[2px] bg-stone-200 z-0" style={i === 0 ? { left: '50%' } : i === DEMO_SCHEDULE.length - 1 ? { right: '50%' } : {}} />}
+                  <div onClick={() => onSave(cleanSite({ ...site, [d.doneKey]: isDone ? '' : 'O' }))}
+                    className={`w-[14px] h-[14px] rounded-full border-2 mx-auto relative z-10 cursor-pointer flex items-center justify-center ${isDone ? 'bg-emerald-500 border-emerald-500' : (hasDate ? TL_DOT[st] : TL_DOT.na)}`}>
+                    {isDone && <span className="text-white text-[8px] font-bold">✓</span>}
+                  </div>
+                  <div className={`text-[10px] mt-0.5 ${isDone ? 'text-emerald-600 font-medium' : 'text-stone-500'}`}>{d.label}</div>
+                  {hasDate ? (
+                    <>
+                      <div className={`text-[10px] font-semibold num-mono cursor-pointer hover:underline ${isDone ? 'text-emerald-700' : TL_TEXT[st]}`}
+                        onClick={() => dateRef.current && dateRef.current.showPicker()}>{fmt(site[d.key])}</div>
+                      <input ref={dateRef} type="date" className="sr-only" value={site[d.key] || ''} onChange={(e) => onSave(cleanSite({ ...site, [d.key]: e.target.value }))} />
+                    </>
+                  ) : (
+                    <div className={`text-[10px] ${isDone ? 'text-emerald-700 font-medium' : 'text-stone-400'}`}>{isDone ? '해지' : '—'}</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    function DemoEditor({ site, onSave, onDelete, onCancel }) {
+      const [draft, setDraft] = useState(site || {});
+      const [activeTab, setActiveTab] = useState('계약');
+      const [saving, setSaving] = useState(false);
+      useEffect(() => { setDraft(site || {}); }, [site]);
+      const update = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
+      const hasName = !!(draft.현장명 && draft.현장명.trim());
+      const handleSave = async () => {
+        if (!hasName) return;
+        setSaving(true);
+        try { await onSave(draft); } catch (e) { alert('저장 실패: ' + e.message); }
+        setSaving(false);
+      };
+      const DEMO_TABS = ['계약', '시공', '정산', '비고'];
+
+      return (
+        <div>
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+            <button onClick={onCancel} className="flex items-center gap-1.5 text-sm text-stone-600 hover:text-stone-900">
+              <Icons.ChevronLeft size={16} /> 목록으로
+            </button>
+            <div className="flex items-center gap-2">
+              {site && (
+                <button onClick={() => onDelete(site.id)} className="px-3 py-2 text-sm text-red-700 hover:bg-red-50 rounded flex items-center gap-1.5">
+                  <Icons.Trash2 size={14} /> 삭제
+                </button>
+              )}
+              <button onClick={handleSave} disabled={saving || !hasName}
+                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 disabled:bg-stone-300 disabled:cursor-not-allowed text-white text-sm font-semibold rounded flex items-center gap-1.5">
+                <Icons.Save size={14} /> {saving ? '저장 중…' : '저장하기'}
+              </button>
+            </div>
+          </div>
+          <div className="bg-white border border-stone-200 rounded-lg overflow-hidden">
+            <div className="px-6 pt-5 pb-3 border-b border-stone-200">
+              <h2 className="text-xl font-bold text-stone-900">{draft.현장명 || '새 철거 현장'}</h2>
+              <p className="text-sm text-stone-500 mt-1">{draft.이동일자 ? `이동: ${draft.이동일자}` : '신규 등록'} · 철거</p>
+            </div>
+            <div className="flex border-b border-stone-200 px-6 gap-1 overflow-x-auto">
+              {DEMO_TABS.map((tab) => (
+                <button key={tab} onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-3 text-sm font-medium border-b-2 -mb-[1px] transition-colors whitespace-nowrap ${activeTab === tab ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-500 hover:text-stone-700'}`}>
+                  {tab}
+                </button>
+              ))}
+            </div>
+            <div className="p-6">
+              {activeTab === '계약' && (
+                <div className="space-y-6">
+                  <FormSection title="기본 정보">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Field label="현장명 *"><TextInput value={draft.현장명} onChange={(v) => update('현장명', v)} placeholder="현장명 입력" /></Field>
+                      <Field label="지역"><TextInput value={draft.지역} onChange={(v) => update('지역', v)} /></Field>
+                      <Field label="주소" className="md:col-span-2"><TextInput value={draft.주소} onChange={(v) => update('주소', v)} /></Field>
+                      <Field label="건물유형"><TextInput value={draft.건물유형} onChange={(v) => update('건물유형', v)} /></Field>
+                      <Field label="투자유형"><Select value={draft.투자유형} onChange={(v) => update('투자유형', v)} options={ENUMS.투자유형} /></Field>
+                      <Field label="시공사"><Select value={draft.시공사} onChange={(v) => update('시공사', v)} options={ENUMS.시공사} /></Field>
+                    </div>
+                  </FormSection>
+                  <FormSection title="계약 정보">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Field label="계약일"><TextInput type="date" value={draft.demo_계약일} onChange={(v) => update('demo_계약일', v)} /></Field>
+                      <Field label="계약기간"><TextInput value={draft.demo_계약기간} onChange={(v) => update('demo_계약기간', v)} /></Field>
+                    </div>
+                  </FormSection>
+                  <FormSection title="기안">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Field label="충전소수정기안"><Select value={draft.충전소수정기안} onChange={(v) => update('충전소수정기안', v)} options={ENUMS.기안상태} /></Field>
+                      <Field label="철거기안"><Select value={draft.철거기안} onChange={(v) => update('철거기안', v)} options={ENUMS.기안상태} /></Field>
+                      <Field label="정산기안"><Select value={draft.정산기안} onChange={(v) => update('정산기안', v)} options={ENUMS.기안상태} /></Field>
+                    </div>
+                  </FormSection>
+                  <FormSection title="공정">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Field label="공사예정일"><TextInput type="date" value={draft.demo_공사예정일} onChange={(v) => update('demo_공사예정일', v)} /></Field>
+                      <Field label="공사 진행여부"><Select value={draft.demo_공사완료} onChange={(v) => update('demo_공사완료', v)} options={['', 'O', '대기중']} /></Field>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+                      <Field label="철거안내 예정일"><TextInput type="date" value={draft.demo_철거안내일} onChange={(v) => update('demo_철거안내일', v)} /></Field>
+                      <Field label="철거안내 진행여부"><Select value={draft.demo_철거안내완료} onChange={(v) => update('demo_철거안내완료', v)} options={['', 'O', '대기중', '해당없음']} /></Field>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+                      <Field label="계량기 해지여부"><Select value={draft.demo_계량기해지} onChange={(v) => update('demo_계량기해지', v)} options={['', 'O', '해당없음']} /></Field>
+                    </div>
+                  </FormSection>
+                  <FormSection title="계약 진행현황">
+                    <Field label="진행현황"><Select value={draft.demo_계약진행} onChange={(v) => update('demo_계약진행', v)} options={['', '계약검토', '계약진행', '계약완료', '보류', '취소']} /></Field>
+                  </FormSection>
+                </div>
+              )}
+              {activeTab === '시공' && (
+                <div className="space-y-6">
+                  <FormSection title="시공 진행현황">
+                    <Field label="진행현황"><Select value={draft.demo_시공진행} onChange={(v) => update('demo_시공진행', v)} options={['', '시공대기', '공사중', '공사완료', '보류', '취소']} /></Field>
+                  </FormSection>
+                  <FormSection title="메모">
+                    <Textarea value={draft.demo_시공메모} onChange={(v) => update('demo_시공메모', v)} rows={4} placeholder="시공 관련 메모..." />
+                  </FormSection>
+                </div>
+              )}
+              {activeTab === '정산' && (
+                <div className="space-y-6">
+                  <FormSection title="시공비 승인">
+                    <Field label="시공비 승인현황"><Select value={draft.demo_정산진행} onChange={(v) => update('demo_정산진행', v)} options={ENUMS.정산진행} /></Field>
+                  </FormSection>
+                  <FormSection title="투자비 정리">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Field label="공사 매출 (원)"><NumInput value={draft.demo_매출} onChange={(v) => update('demo_매출', v)} /></Field>
+                      <Field label="공사 매입 (원)"><NumInput value={draft.demo_매입} onChange={(v) => update('demo_매입', v)} /></Field>
+                    </div>
+                  </FormSection>
+                  <FormSection title="메모">
+                    <Textarea value={draft.demo_정산메모} onChange={(v) => update('demo_정산메모', v)} rows={4} placeholder="정산 관련 메모..." />
+                  </FormSection>
+                </div>
+              )}
+              {activeTab === '비고' && (
+                <div className="space-y-6">
+                  <FormSection title="비고">
+                    <Textarea value={draft.demo_비고} onChange={(v) => update('demo_비고', v)} rows={8} placeholder="자유 메모..." />
+                  </FormSection>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     function Dashboard({ sites, onEditFromDashboard }) {
       const stats = useMemo(() => {
