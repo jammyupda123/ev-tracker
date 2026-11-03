@@ -991,12 +991,26 @@
     const cleanSite = (s) => { const c = {}; Object.keys(s).forEach((k) => { if (!COMPUTED_KEYS.has(k)) c[k] = s[k]; }); return c; };
     const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 
+    const getModelSummary = (s) => {
+      const items = [
+        { qty: Number(s.과금형 || 0), model: s.시공_과금형_모델명 },
+        { qty: Number(s['7kW벽부'] || 0), model: s.시공_벽부_모델명 },
+        { qty: Number(s['7kW스탠드'] || 0), model: s.시공_스탠드_모델명 },
+        { qty: Number(s['50kW'] || 0), model: s.시공_50kW_모델명 },
+        { qty: Number(s['100kW'] || 0), model: s.시공_100kW_모델명 },
+      ].filter((i) => i.qty > 0 && i.model);
+      if (!items.length) return '';
+      const merged = {};
+      items.forEach((i) => { merged[i.model] = (merged[i.model] || 0) + i.qty; });
+      return Object.entries(merged).map(([m, q]) => `${m} ×${q}`).join(', ');
+    };
+
     // 충전기 제조사-모델 매핑
     const SLOW_MAKERS = ['', '휴맥스', '제니스코리아', '그리드위즈', '코스텔', '직접입력'];
     const SLOW_MODELS = {
       '휴맥스': ['', 'HEV-S1007A', 'HEV-S1007', 'HS21007', 'HS31007'],
       '제니스코리아': ['', 'GK-SMC03-7L'],
-      '그리드위즈': ['', 'SK07HM999999'],
+      '그리드위즈': ['', 'GESEBA07BT1S04'],
       '코스텔': ['', 'CEC-2303HR'],
     };
     const FAST_MODELS = {
@@ -1133,7 +1147,10 @@
             <span className="text-[13px] font-bold num-mono">{pRate}%</span>
           </div>
           <div />
-          <div className="text-[13px] text-stone-600"><strong className="num-mono">{channels || 0}</strong> CH · <strong className="num-mono">{kw || 0}</strong> kW</div>
+          <div>
+            <div className="text-[13px] text-stone-600"><strong className="num-mono">{channels || 0}</strong> CH · <strong className="num-mono">{kw || 0}</strong> kW</div>
+            {(() => { const ms = getModelSummary(site); return ms ? <div className="text-[10px] text-stone-400 mt-0.5 truncate" title={ms}>{ms}</div> : null; })()}
+          </div>
           <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()} onContextMenu={(e) => e.preventDefault()}>
             {GIAN_ROWS.map((row, ri) => (
               <div key={ri} className="flex gap-1">
@@ -1262,6 +1279,7 @@
             <Stat label="kW" value={kw || '—'} />
             <Stat label="마진률" value={marginRate ? `${(marginRate * 100).toFixed(1)}%` : '—'} />
           </div>
+          {(() => { const ms = getModelSummary(site); return ms ? <div className="text-[10px] text-stone-400 mt-1 truncate" title={ms}>{ms}</div> : null; })()}
           </div>
 
           <div className="flex gap-1 flex-wrap mt-3 pt-3 border-t border-stone-100">
