@@ -1149,7 +1149,7 @@
           <div />
           <div>
             <div className="text-[13px] text-stone-600"><strong className="num-mono">{channels || 0}</strong> CH · <strong className="num-mono">{kw || 0}</strong> kW</div>
-            {(() => { const ms = getModelSummary(site); return ms ? <div className="text-[10px] text-stone-400 mt-0.5 truncate" title={ms}>{ms}</div> : null; })()}
+            {(() => { const ms = getModelSummary(site); return ms ? <div className="text-[13px] text-stone-600 mt-0.5">{ms.split(', ').map((m, i) => <div key={i}>{m}</div>)}</div> : null; })()}
           </div>
           <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()} onContextMenu={(e) => e.preventDefault()}>
             {GIAN_ROWS.map((row, ri) => (
@@ -1279,7 +1279,7 @@
             <Stat label="kW" value={kw || '—'} />
             <Stat label="마진률" value={marginRate ? `${(marginRate * 100).toFixed(1)}%` : '—'} />
           </div>
-          {(() => { const ms = getModelSummary(site); return ms ? <div className="text-[10px] text-stone-400 mt-1 truncate" title={ms}>{ms}</div> : null; })()}
+          {(() => { const ms = getModelSummary(site); return ms ? <div className="text-[12px] text-stone-600 mt-1">{ms.split(', ').map((m, i) => <span key={i} className="inline-block mr-2">{m}</span>)}</div> : null; })()}
           </div>
 
           <div className="flex gap-1 flex-wrap mt-3 pt-3 border-t border-stone-100">
