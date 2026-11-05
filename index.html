@@ -2189,27 +2189,64 @@
     function DemoList({ sites, onEdit, onNew, saveSite, openGianMenu }) {
       const [searchTerm, setSearchTerm] = useState('');
       const [viewMode, setViewMode] = useState('list');
+      const [filterStage, setFilterStage] = useState('전체');
+      const [sortBy, setSortBy] = useState('progressHigh');
       const filtered = useMemo(() => {
         const term = searchTerm.toLowerCase();
-        return sites.filter((s) =>
-          (s.현장명 || '').toLowerCase().includes(term) || (s.시공사 || '').toLowerCase().includes(term) || (s.지역 || '').includes(term) || (s.HEV영업담당자 || '').toLowerCase().includes(term)
-        ).map((s) => ({ ...s, _stage: getDemoStage(s) }));
-      }, [sites, searchTerm]);
+        let result = sites.map((s) => ({ ...s, _stage: getDemoStage(s), _prog: getDemoProgress(s) }));
+        result = result.filter((s) => {
+          if (filterStage === '진행중 (100% 제외)') { if (s._prog.rate >= 100) return false; }
+          else if (filterStage !== '전체') { if (s._stage !== filterStage) return false; }
+          if (!term) return true;
+          return (s.현장명 || '').toLowerCase().includes(term) || (s.시공사 || '').toLowerCase().includes(term) || (s.지역 || '').includes(term) || (s.HEV영업담당자 || '').toLowerCase().includes(term);
+        });
+        const nameCmp = (a, b) => (a.현장명 || '').localeCompare(b.현장명 || '', 'ko', { numeric: true });
+        if (sortBy === 'progressHigh') result.sort((a, b) => (b._prog.rate - a._prog.rate) || nameCmp(a, b));
+        else if (sortBy === 'progressLow') result.sort((a, b) => (a._prog.rate - b._prog.rate) || nameCmp(a, b));
+        else if (sortBy === 'name') result.sort(nameCmp);
+        else result.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '') || nameCmp(a, b));
+        // 보류/취소 하단 고정
+        const sortRank = (s) => {
+          const stage = s.demo_시공진행 || s.demo_계약진행 || '';
+          if (stage === '취소') return 2;
+          if (stage === '보류') return 1;
+          return 0;
+        };
+        result.sort((a, b) => sortRank(a) - sortRank(b));
+        return result;
+      }, [sites, searchTerm, filterStage, sortBy]);
 
       return (
         <div>
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-2xl font-bold text-stone-900">철거 목록</h2>
-              <p className="text-sm text-stone-500 mt-1">전체 <span className="num-mono font-semibold text-stone-900">{sites.length}</span>개</p>
+              <p className="text-sm text-stone-500 mt-1">전체 <span className="num-mono font-semibold text-stone-900">{sites.length}</span>개 · 필터 결과 <span className="num-mono font-semibold text-stone-900">{filtered.length}</span>개</p>
             </div>
           </div>
           <div className="flex items-center gap-3 mb-6 flex-wrap">
             <div className="relative flex-1 min-w-[200px] max-w-md">
               <Icons.Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
-              <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="현장명·시공사 검색"
+              <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="현장명·시공사·담당자 검색"
                 className="w-full pl-10 pr-9 py-2 bg-white border border-stone-300 rounded text-sm focus:outline-none focus:border-slate-800" />
               {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
+            </div>
+            <div className="flex items-center gap-2">
+              <Icons.Filter size={14} className="text-stone-500" />
+              <select value={filterStage} onChange={(e) => setFilterStage(e.target.value)} className="h-9 px-2 bg-white border border-stone-300 rounded text-sm focus:outline-none focus:border-slate-800">
+                <option>전체</option>
+                <option>진행중 (100% 제외)</option>
+                {DEMO_STAGES.map((s) => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-stone-500">정렬</span>
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="h-9 px-2 bg-white border border-stone-300 rounded text-sm focus:outline-none focus:border-slate-800">
+                <option value="progressHigh">공정률 높은 순</option>
+                <option value="progressLow">공정률 낮은 순</option>
+                <option value="recent">최근 수정순</option>
+                <option value="name">현장명순</option>
+              </select>
             </div>
             <div className="flex border border-stone-300 rounded overflow-hidden">
               <button onClick={() => setViewMode('grid')} className={`px-3 py-1.5 text-xs flex items-center gap-1.5 transition-colors ${viewMode === 'grid' ? 'bg-slate-800 text-white' : 'bg-white text-stone-600'}`}>그리드</button>
