@@ -517,7 +517,15 @@
       if (window.__demoSitesForExport && window.__demoSitesForExport.length > 0) {
         const demoRows = window.__demoSitesForExport.map((s) => ({
           '현장명': s.현장명 || '', '지역': s.지역 || '', '주소': s.주소 || '', '건물유형': s.건물유형 || '',
-          '투자유형': s.투자유형 || '', '시공사': s.시공사 || '', 'HEV영업담당자': s.HEV영업담당자 || '', '이동일자': s.이동일자 || '',
+          '투자유형': s.투자유형 || '', '시공사': s.시공사 || '', 'HEV영업담당자': s.HEV영업담당자 || '',
+          '담당자 이름': s.demo_담당자_이름 || '', '담당자 소속': s.demo_담당자_소속 || '', '담당자 연락처': s.demo_담당자_연락처 || '', '담당자 메일': s.demo_담당자_메일 || '',
+          '과금형': s.demo_과금형 || '', '7kW벽부': s.demo_7kW벽부 || '', '7kW스탠드': s.demo_7kW스탠드 || '', '50kW': s.demo_50kW || '', '100kW': s.demo_100kW || '',
+          '과금형 제조사': s.demo_과금형_제조사 || '', '과금형 모델명': s.demo_과금형_모델명 || '',
+          '벽부 제조사': s.demo_벽부_제조사 || '', '벽부 모델명': s.demo_벽부_모델명 || '',
+          '스탠드 제조사': s.demo_스탠드_제조사 || '', '스탠드 모델명': s.demo_스탠드_모델명 || '',
+          '50kW 제조사': s.demo_50kW_제조사 || '', '50kW 모델명': s.demo_50kW_모델명 || '',
+          '100kW 제조사': s.demo_100kW_제조사 || '', '100kW 모델명': s.demo_100kW_모델명 || '',
+          '이동일자': s.이동일자 || '',
           '계약일': s.demo_계약일 || '', '계약기간': s.demo_계약기간 || '',
           '충전소삭제기안': s.충전소삭제기안 || '', '충전소수정기안': s.충전소수정기안 || '', '철거기안': s.철거기안 || '', '정산기안': s.정산기안 || '',
           '행위허가': s.demo_행위허가 || '', '예상공사비': s.demo_예상공사비 || '',
@@ -2265,8 +2273,8 @@
           ) : (
             <div className="bg-white border border-stone-200 rounded-lg overflow-x-auto">
               <div style={{ minWidth: '900px' }}>
-              <div className="grid text-[13px] font-semibold text-stone-100 border-b-2 border-slate-700 bg-slate-800 px-5 py-3 sticky top-0 z-10" style={{ gridTemplateColumns: '2.5fr 0.6fr 0.8fr 1fr 1.6fr 2fr' }}>
-                <div>현장명</div><div>단계</div><div>공정률</div><div>시공사</div><div>기안</div><div>공정</div>
+              <div className="grid text-[13px] font-semibold text-stone-100 border-b-2 border-slate-700 bg-slate-800 px-5 py-3 sticky top-0 z-10" style={{ gridTemplateColumns: '2.5fr 1fr 0.2fr 1fr 1.6fr 2fr' }}>
+                <div>현장명</div><div>공정률</div><div></div><div>시공사</div><div>기안</div><div>공정</div>
               </div>
               {filtered.map((s, idx) => <DemoListRow key={s.id} site={s} idx={idx} onClick={() => onEdit(s.id)} onSave={saveSite} openGianMenu={openGianMenu} />)}
               </div>
@@ -2348,17 +2356,17 @@
       const stage = site._stage || getDemoStage(site);
       const prog = getDemoProgress(site);
       return (
-        <div className={`grid items-center px-5 py-3.5 border-b-2 border-stone-200 hover:brightness-[0.98] transition-all cursor-pointer ${idx % 2 === 1 ? 'bg-[#F8FAFC]' : ''}`} style={{ gridTemplateColumns: '2.5fr 0.6fr 0.8fr 1fr 1.6fr 2fr' }} onClick={onClick}>
+        <div className={`grid items-center px-5 py-3.5 border-b-2 border-stone-200 hover:brightness-[0.98] transition-all cursor-pointer ${idx % 2 === 1 ? 'bg-[#F8FAFC]' : ''}`} style={{ gridTemplateColumns: '2.5fr 1fr 0.2fr 1fr 1.6fr 2fr' }} onClick={onClick}>
           <div className="min-w-0">
             <div className="text-[12px] text-stone-500 truncate mb-1">영업 {site.HEV영업담당자 || '미배정'} · 시공 {site.시공사 || '미배정'}</div>
             <div className="text-[14px] font-semibold text-stone-900 truncate">{site.현장명 || '(이름 없음)'}</div>
             <div className="text-[12px] text-stone-500 mt-0.5">{site.지역 || '—'} · {site.건물유형 || '—'}</div>
           </div>
-          <div>{stage && <span className={`px-2 py-0.5 text-[11px] font-medium rounded border ${DEMO_STAGE_COLORS[stage] || ''}`}>{stage}</span>}</div>
           <div>
             <div className="flex gap-0.5 mb-1">{prog.statuses.map((st) => <div key={st.key} className={`flex-1 h-1.5 rounded-sm ${st.status === 'done' ? 'bg-emerald-400' : 'bg-stone-200'}`} />)}</div>
             <span className="text-[13px] font-bold num-mono">{prog.rate}%</span>
           </div>
+          <div />
           <div className="text-[13px] text-stone-600 font-medium">{site.시공사 || '—'}</div>
           <div className="flex gap-1 flex-wrap" onClick={(e) => e.stopPropagation()} onContextMenu={(e) => e.preventDefault()}>
             {DEMO_GIAN.map((g) => {
@@ -2456,6 +2464,55 @@
                     <Field label="시공사"><Select value={draft.시공사} onChange={(v) => update('시공사', v)} options={ENUMS.시공사} /></Field>
                       <Field label="HEV 영업 담당자"><TextInput value={draft.HEV영업담당자} onChange={(v) => update('HEV영업담당자', v)} /></Field>
                   </div>
+                </FormSection>
+
+                <FormSection title="현장담당자 (발주처)">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Field label="이름"><TextInput value={draft.demo_담당자_이름} onChange={(v) => update('demo_담당자_이름', v)} /></Field>
+                    <Field label="소속"><TextInput value={draft.demo_담당자_소속} onChange={(v) => update('demo_담당자_소속', v)} /></Field>
+                    <Field label="연락처"><TextInput value={draft.demo_담당자_연락처} onChange={(v) => update('demo_담당자_연락처', v)} /></Field>
+                    <Field label="메일"><TextInput value={draft.demo_담당자_메일} onChange={(v) => update('demo_담당자_메일', v)} /></Field>
+                  </div>
+                </FormSection>
+
+                <FormSection title="철거 충전기 종류">
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-3">
+                    <Field label="과금형 (개)"><NumInput value={draft.demo_과금형} onChange={(v) => update('demo_과금형', v)} /></Field>
+                    <Field label="7kW벽부 (개)"><NumInput value={draft.demo_7kW벽부} onChange={(v) => update('demo_7kW벽부', v)} /></Field>
+                    <Field label="7kW스탠드 (개)"><NumInput value={draft.demo_7kW스탠드} onChange={(v) => update('demo_7kW스탠드', v)} /></Field>
+                    <Field label="50kW (개)"><NumInput value={draft.demo_50kW} onChange={(v) => update('demo_50kW', v)} /></Field>
+                    <Field label="100kW (개)"><NumInput value={draft.demo_100kW} onChange={(v) => update('demo_100kW', v)} /></Field>
+                  </div>
+                  {Number(draft.demo_과금형 || 0) > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3 pl-3 border-l-2 border-stone-200">
+                      <div className="text-xs text-stone-500 md:col-span-3 font-medium">과금형 제조사/모델</div>
+                      <ChargerMakerModel type="과금형" draft={draft} update={update} makerKey="demo_과금형_제조사" modelKey="demo_과금형_모델명" />
+                    </div>
+                  )}
+                  {(Number(draft.demo_7kW벽부 || 0) > 0) && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3 pl-3 border-l-2 border-stone-200">
+                      <div className="text-xs text-stone-500 md:col-span-3 font-medium">7kW벽부 제조사/모델</div>
+                      <ChargerMakerModel type="7kW" draft={draft} update={update} makerKey="demo_벽부_제조사" modelKey="demo_벽부_모델명" />
+                    </div>
+                  )}
+                  {(Number(draft.demo_7kW스탠드 || 0) > 0) && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3 pl-3 border-l-2 border-stone-200">
+                      <div className="text-xs text-stone-500 md:col-span-3 font-medium">7kW스탠드 제조사/모델</div>
+                      <ChargerMakerModel type="7kW" draft={draft} update={update} makerKey="demo_스탠드_제조사" modelKey="demo_스탠드_모델명" />
+                    </div>
+                  )}
+                  {Number(draft.demo_50kW || 0) > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3 pl-3 border-l-2 border-stone-200">
+                      <div className="text-xs text-stone-500 md:col-span-3 font-medium">50kW 제조사/모델</div>
+                      <ChargerMakerModel type="50kW" draft={draft} update={update} makerKey="demo_50kW_제조사" modelKey="demo_50kW_모델명" />
+                    </div>
+                  )}
+                  {Number(draft.demo_100kW || 0) > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3 pl-3 border-l-2 border-stone-200">
+                      <div className="text-xs text-stone-500 md:col-span-3 font-medium">100kW 제조사/모델</div>
+                      <ChargerMakerModel type="100kW" draft={draft} update={update} makerKey="demo_100kW_제조사" modelKey="demo_100kW_모델명" />
+                    </div>
+                  )}
                 </FormSection>
 
                 <FormSection title="기안">
