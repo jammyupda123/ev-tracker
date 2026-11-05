@@ -517,9 +517,9 @@
       if (window.__demoSitesForExport && window.__demoSitesForExport.length > 0) {
         const demoRows = window.__demoSitesForExport.map((s) => ({
           '현장명': s.현장명 || '', '지역': s.지역 || '', '주소': s.주소 || '', '건물유형': s.건물유형 || '',
-          '투자유형': s.투자유형 || '', '시공사': s.시공사 || '', '이동일자': s.이동일자 || '',
+          '투자유형': s.투자유형 || '', '시공사': s.시공사 || '', 'HEV영업담당자': s.HEV영업담당자 || '', '이동일자': s.이동일자 || '',
           '계약일': s.demo_계약일 || '', '계약기간': s.demo_계약기간 || '',
-          '충전소수정기안': s.충전소수정기안 || '', '철거기안': s.철거기안 || '', '정산기안': s.정산기안 || '',
+          '충전소삭제기안': s.충전소삭제기안 || '', '충전소수정기안': s.충전소수정기안 || '',
           '행위허가': s.demo_행위허가 || '', '예상공사비': s.demo_예상공사비 || '',
           '공사예정일': s.demo_공사예정일 || '', '공사완료': s.demo_공사완료 || '',
           '철거안내일': s.demo_철거안내일 || '', '철거안내완료': s.demo_철거안내완료 || '',
@@ -2157,15 +2157,14 @@
     const DEMO_STAGES = ['계약', '시공', '정산'];
     const DEMO_STAGE_COLORS = { '계약': 'bg-indigo-50 text-indigo-700 border-indigo-200', '시공': 'bg-rose-50 text-rose-700 border-rose-200', '정산': 'bg-slate-100 text-slate-700 border-slate-300' };
     const DEMO_GIAN = [
-      { key: '충전소수정기안', label: '충전소수정' },
-      { key: '철거기안', label: '철거기안' },
-      { key: '정산기안', label: '정산기안' },
+      { key: '충전소삭제기안', label: '삭제기안' },
+      { key: '충전소수정기안', label: '수정기안' },
     ];
     const DEMO_SCHEDULE = [
-      { key: null, doneKey: 'demo_행위허가', label: '행위허가' },
+      { key: null, doneKey: 'demo_행위허가', label: '행위허가', doneText: '완료', undoneText: '미완료' },
       { key: 'demo_공사예정일', doneKey: 'demo_공사완료', label: '공사예정' },
       { key: 'demo_철거안내일', doneKey: 'demo_철거안내완료', label: '철거안내' },
-      { key: null, doneKey: 'demo_계량기해지', label: '계량기해지' },
+      { key: null, doneKey: 'demo_계량기해지', label: '계량기해지', doneText: '해지', undoneText: '—' },
     ];
     const getDemoStage = (s) => {
       if (s.demo_정산진행) return '정산';
@@ -2179,7 +2178,7 @@
       const filtered = useMemo(() => {
         const term = searchTerm.toLowerCase();
         return sites.filter((s) =>
-          (s.현장명 || '').toLowerCase().includes(term) || (s.시공사 || '').toLowerCase().includes(term) || (s.지역 || '').includes(term)
+          (s.현장명 || '').toLowerCase().includes(term) || (s.시공사 || '').toLowerCase().includes(term) || (s.지역 || '').includes(term) || (s.HEV영업담당자 || '').toLowerCase().includes(term)
         ).map((s) => ({ ...s, _stage: getDemoStage(s) }));
       }, [sites, searchTerm]);
 
@@ -2231,7 +2230,7 @@
       return (
         <div className="bg-white border border-stone-200 rounded-lg p-5 text-left hover:border-slate-800 hover:shadow-sm transition-all relative">
           <div className="cursor-pointer" onClick={onClick}>
-            <div className="text-[12px] text-stone-500 mb-1">{site.시공사 || '미배정'} · {site.투자유형 || ''}</div>
+            <div className="text-[12px] text-stone-500 mb-1">영업 {site.HEV영업담당자 || '미배정'} · 시공 {site.시공사 || '미배정'}</div>
             <div className="flex items-start justify-between mb-2">
               <h3 className="text-[15px] font-semibold text-stone-900 truncate flex-1">{site.현장명 || '(이름 없음)'}</h3>
               {stage && <span className={`shrink-0 ml-2 px-2 py-0.5 text-[12px] font-medium rounded border ${DEMO_STAGE_COLORS[stage] || ''}`}>{stage}</span>}
@@ -2277,7 +2276,7 @@
                         <input ref={dateRef} type="date" className="sr-only" value={site[d.key] || ''} onChange={(e) => onSave(cleanSite({ ...site, [d.key]: e.target.value }))} />
                       </>
                     ) : (
-                      <div className={`text-[11px] ${isDone ? 'text-emerald-700 font-medium' : 'text-stone-400'}`}>{isDone ? '해지완료' : '미해지'}</div>
+                      <div className={`text-[11px] ${isDone ? 'text-emerald-700 font-medium' : 'text-stone-400'}`}>{isDone ? (d.doneText || '완료') : (d.undoneText || '—')}</div>
                     )}
                   </div>
                 );
@@ -2293,7 +2292,7 @@
       return (
         <div className={`grid items-center px-5 py-3.5 border-b-2 border-stone-200 hover:brightness-[0.98] transition-all cursor-pointer ${idx % 2 === 1 ? 'bg-[#F8FAFC]' : ''}`} style={{ gridTemplateColumns: '2.5fr 0.6fr 1fr 1.8fr 2fr' }} onClick={onClick}>
           <div className="min-w-0">
-            <div className="text-[12px] text-stone-500 truncate mb-1">{site.시공사 || '미배정'} · {site.투자유형 || ''}</div>
+            <div className="text-[12px] text-stone-500 truncate mb-1">영업 {site.HEV영업담당자 || '미배정'} · 시공 {site.시공사 || '미배정'}</div>
             <div className="text-[14px] font-semibold text-stone-900 truncate">{site.현장명 || '(이름 없음)'}</div>
             <div className="text-[12px] text-stone-500 mt-0.5">{site.지역 || '—'} · {site.건물유형 || '—'}</div>
           </div>
@@ -2333,7 +2332,7 @@
                       <input ref={dateRef} type="date" className="sr-only" value={site[d.key] || ''} onChange={(e) => onSave(cleanSite({ ...site, [d.key]: e.target.value }))} />
                     </>
                   ) : (
-                    <div className={`text-[10px] ${isDone ? 'text-emerald-700 font-medium' : 'text-stone-400'}`}>{isDone ? '해지' : '—'}</div>
+                    <div className={`text-[10px] ${isDone ? 'text-emerald-700 font-medium' : 'text-stone-400'}`}>{isDone ? (d.doneText || '완료') : (d.undoneText || '—')}</div>
                   )}
                 </div>
               );
@@ -2352,7 +2351,7 @@
       const handleSave = async () => {
         if (!hasName) return;
         setSaving(true);
-        try { await onSave(draft); } catch (e) { alert('저장 실패: ' + e.message); }
+        try { await onSave(draft); onCancel(); } catch (e) { alert('저장 실패: ' + e.message); }
         setSaving(false);
       };
       const 예상공사비 = Number(draft.demo_예상공사비 || 0);
@@ -2393,14 +2392,15 @@
                     <Field label="건물유형"><TextInput value={draft.건물유형} onChange={(v) => update('건물유형', v)} /></Field>
                     <Field label="투자유형"><Select value={draft.투자유형} onChange={(v) => update('투자유형', v)} options={ENUMS.투자유형} /></Field>
                     <Field label="시공사"><Select value={draft.시공사} onChange={(v) => update('시공사', v)} options={ENUMS.시공사} /></Field>
+                      <Field label="HEV 영업 담당자"><TextInput value={draft.HEV영업담당자} onChange={(v) => update('HEV영업담당자', v)} /></Field>
                   </div>
                 </FormSection>
 
                 <FormSection title="기안">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <p className="text-xs text-stone-500 mb-3">전체 철거 → 삭제기안 / 일부 철거 → 수정기안</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Field label="충전소삭제기안"><Select value={draft.충전소삭제기안} onChange={(v) => update('충전소삭제기안', v)} options={ENUMS.기안상태} /></Field>
                     <Field label="충전소수정기안"><Select value={draft.충전소수정기안} onChange={(v) => update('충전소수정기안', v)} options={ENUMS.기안상태} /></Field>
-                    <Field label="철거기안"><Select value={draft.철거기안} onChange={(v) => update('철거기안', v)} options={ENUMS.기안상태} /></Field>
-                    <Field label="정산기안"><Select value={draft.정산기안} onChange={(v) => update('정산기안', v)} options={ENUMS.기안상태} /></Field>
                   </div>
                 </FormSection>
 
