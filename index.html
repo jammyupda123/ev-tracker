@@ -1088,12 +1088,12 @@
     }
     const fmtDateFull = (d) => { if (!d) return null; const dt = new Date(d); if (isNaN(dt)) return null; return `${d}(${DAY_NAMES[dt.getDay()]})`; };
     const SCHEDULE_DEFS = [
-      { key: '출하예정일', doneKey: '출하_완료', label: '출하' },
-      { key: '착공예정일', doneKey: '착공_완료', label: '착공' },
-      { key: '전기안전점검_예정일', doneKey: '안전점검_완료', label: '안전점검' },
-      { key: '사용검사_예정일', doneKey: '사용검사_완료', label: '사용검사' },
-      { key: '준공안내_예정일', doneKey: '준공안내_완료', label: '준공안내' },
-      { key: '준공검수_예정일', doneKey: '준공검수_완료', label: '준공검수' },
+      { key: '출하예정일', doneKey: '출하_완료', label: '출하', syncKey: '출하여부', syncDone: 'O', syncWait: '대기중' },
+      { key: '착공예정일', doneKey: '착공_완료', label: '착공', syncKey: '시공진행', syncDone: '착공완료', syncWait: '대기중' },
+      { key: '전기안전점검_예정일', doneKey: '안전점검_완료', label: '안전점검', syncKey: '전기안전점검_진행여부', syncDone: 'O', syncWait: '대기중' },
+      { key: '사용검사_예정일', doneKey: '사용검사_완료', label: '사용검사', syncKey: '사용검사_진행여부', syncDone: 'O', syncWait: '대기중' },
+      { key: '준공안내_예정일', doneKey: '준공안내_완료', label: '준공안내', syncKey: '준공안내_진행여부', syncDone: 'O', syncWait: '대기중' },
+      { key: '준공검수_예정일', doneKey: '준공검수_완료', label: '준공검수', syncKey: '준공검수_진행여부', syncDone: 'O', syncWait: '대기중' },
     ];
     function getDateStatus(dateStr) {
       if (!dateStr) return 'na';
@@ -1110,8 +1110,23 @@
       const items = SCHEDULE_DEFS.map((d) => ({ ...d, date: site[d.key], isDone: site[d.doneKey] === 'O', status: getDateStatus(site[d.key]) }));
       if (items.every((i) => i.status === 'na' && !i.isDone)) return null;
       const fmt = (d) => { if (!d) return '—'; const dt = new Date(d); if (isNaN(dt)) return '—'; const p = d.split('-'); return `${p[1]}/${p[2]}(${DAY_NAMES[dt.getDay()]})`; };
-      const toggleDone = (item) => { if (onSave) onSave(cleanSite({ ...site, [item.doneKey]: item.isDone ? '' : 'O' })); };
-      const changeDate = (item, val) => { if (onSave) onSave(cleanSite({ ...site, [item.key]: val })); };
+      const toggleDone = (item) => {
+        if (!onSave) return;
+        const nowDone = !item.isDone;
+        const updated = { ...site, [item.doneKey]: nowDone ? 'O' : '' };
+        if (item.syncKey) {
+          if (nowDone) updated[item.syncKey] = item.syncDone || 'O';
+          else updated[item.syncKey] = (item.key && site[item.key]) ? (item.syncWait || '대기중') : '';
+        }
+        onSave(cleanSite(updated));
+      };
+      const changeDate = (item, val) => {
+        if (!onSave) return;
+        const updated = { ...site, [item.key]: val };
+        if (item.syncKey && !item.isDone && val) updated[item.syncKey] = item.syncWait || '대기중';
+        if (item.syncKey && !item.isDone && !val) updated[item.syncKey] = '';
+        onSave(cleanSite(updated));
+      };
       return (
         <div className="mt-2 pt-2 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
           <div className="flex">
@@ -1202,7 +1217,7 @@
               return (
                 <div key={d.key} className="flex-1 text-center relative min-w-0">
                   {i < SCHEDULE_DEFS.length && <div className="absolute top-[7px] left-0 right-0 h-[2px] bg-stone-200 z-0" style={i === 0 ? { left: '50%' } : i === SCHEDULE_DEFS.length - 1 ? { right: '50%' } : {}} />}
-                  <div onClick={() => onSave(cleanSite({ ...site, [d.doneKey]: isDone ? '' : 'O' }))}
+                  <div onClick={() => { const nowDone = !isDone; const u = { ...site, [d.doneKey]: nowDone ? 'O' : '' }; if (d.syncKey) { if (nowDone) u[d.syncKey] = d.syncDone || 'O'; else u[d.syncKey] = (d.key && site[d.key]) ? (d.syncWait || '대기중') : ''; } onSave(cleanSite(u)); }}
                     className={`w-[14px] h-[14px] rounded-full border-2 mx-auto relative z-10 cursor-pointer flex items-center justify-center transition-colors ${isDone ? 'bg-emerald-500 border-emerald-500' : TL_DOT[st]}`}>
                     {isDone && <span className="text-white text-[8px] font-bold">✓</span>}
                   </div>
@@ -1212,7 +1227,7 @@
                     {fmt(site[d.key])}
                   </div>
                   <input ref={dateRef} type="date" className="sr-only" value={site[d.key] || ''}
-                    onChange={(e) => onSave(cleanSite({ ...site, [d.key]: e.target.value }))} />
+                    onChange={(e) => { const val = e.target.value; const u = { ...site, [d.key]: val }; if (d.syncKey && !isDone) u[d.syncKey] = val ? (d.syncWait || '대기중') : ''; onSave(cleanSite(u)); }} />
                 </div>
               );
             })}
