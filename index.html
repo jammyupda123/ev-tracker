@@ -679,20 +679,29 @@
         saveUiSetting('memoWidth', w);
       };
 
+      const [loadError, setLoadError] = useState('');
       useEffect(() => {
-        const sitesCol = db.collection('sites');
-        const unsub = sitesCol.onSnapshot(
+        const timeout = setTimeout(() => {
+          setLoading((prev) => {
+            if (prev) setLoadError('데이터 로딩이 지연되고 있습니다. 네트워크를 확인하거나 새로고침 해주세요.');
+            return false;
+          });
+        }, 10000);
+        const unsub = db.collection('sites').onSnapshot(
           (snap) => {
+            clearTimeout(timeout);
             setSites(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
             setLoading(false);
+            setLoadError('');
           },
           (err) => {
+            clearTimeout(timeout);
             console.error('Firestore error', err);
-            alert('데이터 로드 실패: ' + err.message);
+            setLoadError('데이터 로드 실패: ' + err.message);
             setLoading(false);
           }
         );
-        return unsub;
+        return () => { unsub(); clearTimeout(timeout); };
       }, []);
 
       const saveSite = async (site) => {
@@ -779,7 +788,12 @@
           <Header view={view} setView={setView} onNew={() => goToEditor(null)}
             onExport={handleExport} onImport={handleImport} />
           <main className="max-w-7xl mx-auto px-6 py-8">
-            {loading ? (
+            {loadError ? (
+              <div className="text-center py-20">
+                <p className="text-red-600 mb-4">{loadError}</p>
+                <button onClick={() => location.reload()} className="px-5 py-2 bg-slate-900 text-white rounded text-sm font-semibold">새로고침</button>
+              </div>
+            ) : loading ? (
               <div className="text-center py-20 text-stone-500">불러오는 중…</div>
             ) : view === 'list' ? (
               <SiteList sites={sites} searchTerm={searchTerm} setSearchTerm={setSearchTerm}
