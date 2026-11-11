@@ -23,17 +23,17 @@
   <!-- Babel Standalone (인-브라우저 JSX 컴파일) -->
   <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
 
-  <!-- Recharts (UMD) -->
-  <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
-  <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+  <!-- Recharts (UMD) — defer로 페이지 로딩 차단 방지 -->
+  <script defer src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+  <script defer src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
 
   <!-- Firebase v10 compat (전역 firebase 객체) -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
-  <!-- SheetJS (xlsx 가져오기/내보내기) -->
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <!-- SheetJS (xlsx 가져오기/내보내기) — defer -->
+  <script defer src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 
   <style>
     body {
@@ -97,6 +97,9 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
+      console.warn('Firestore persistence unavailable:', err.code);
+    });
     // 공유 모드: 인증 없음 (모든 사용자가 같은 데이터 사용)
 
     const { useState, useEffect, useMemo } = React;
